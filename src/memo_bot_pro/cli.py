@@ -60,6 +60,7 @@ USAGE:
     python main.py <command> [options]
 
 COMMANDS:
+    web                 Start web dashboard (default if no command specified)
     demo                Show demo with market data and signals
     price <SYMBOL>      Get current price for a symbol (e.g., BTCUSDT)
     signals             Generate trading signals
@@ -72,8 +73,11 @@ ENVIRONMENT VARIABLES:
     TELEGRAM_BOT_TOKEN      Your Telegram bot token (optional)
     TELEGRAM_CHAT_ID        Your Telegram chat ID (optional)
     MOCK_MODE               Set to 'false' to use live APIs (default: true)
+    PORT                    Web server port (default: 5000)
 
 EXAMPLES:
+    python main.py              # Start web dashboard
+    python main.py web          # Start web dashboard
     python main.py demo
     python main.py price ETHUSDT
     python main.py signals

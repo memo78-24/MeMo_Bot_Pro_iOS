@@ -21,12 +21,22 @@ args = "MeMo Bot Pro"
 name = "MeMo Bot Pro"
 author = "agent"
 
+[workflows.workflow.metadata]
+outputType = "webview"
+
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "python main.py demo"
-
-[workflows.workflow.metadata]
-outputType = "console"
+args = "python main.py"
+waitForPort = 5000
 
 [deployment]
-deploymentTarget = "cloudrun"
+deploymentTarget = "autoscale"
+run = ["gunicorn", "--bind=0.0.0.0:5000", "--reuse-port", "--workers=2", "src.memo_bot_pro.web_app:app"]
+
+[[ports]]
+localPort = 5000
+externalPort = 80
+
+[[ports]]
+localPort = 42017
+externalPort = 3000

@@ -1,30 +1,34 @@
 # MeMo Bot Pro
 
 ## Overview
-MeMo Bot Pro is a Binance Advisory & Live Trading assistant with Telegram integration. This console-based application provides real-time cryptocurrency price tracking, trading signal generation, and Telegram bot integration for remote monitoring and control.
+MeMo Bot Pro is a Binance Advisory & Live Trading assistant with Telegram integration. This application provides real-time cryptocurrency price tracking, trading signal generation, web dashboard, and Telegram bot integration for remote monitoring and control.
 
 **Version:** 1.0.0  
 **Author:** MeMo  
 **Last Updated:** November 11, 2025
 
 ## Project Status
-This project was originally configured for iOS development using the Briefcase/Toga framework but has been adapted for Replit's Linux environment as a console application. The core functionality (Binance integration and Telegram bot) remains the same.
+This project was originally configured for iOS development using the Briefcase/Toga framework but has been adapted for Replit's Linux environment with both web interface and CLI functionality. The core functionality (Binance integration and Telegram bot) remains the same.
 
 ## Recent Changes
-- **November 11, 2025**: Converted from iOS Toga app to console-based Python application
+- **November 11, 2025**: Converted from iOS Toga app to web + console-based Python application
   - Created complete source structure under `src/memo_bot_pro/`
   - Implemented Binance client with mock mode for testing
   - Added trading signal generator with trend analysis
   - Implemented Telegram bot integration
   - Added CLI interface with multiple commands
-  - Updated dependencies for console environment
+  - **Added Flask web dashboard with live market data and signals**
+  - **Configured for production deployment with Gunicorn**
+  - Updated dependencies for web + console environment
 
 ## Features
+- **🌐 Web Dashboard**: Beautiful web interface showing live market data and signals
 - **📊 Market Data**: Real-time cryptocurrency price tracking
 - **💡 Trading Signals**: Automated signal generation with trend analysis
 - **🤖 Telegram Bot**: Remote control and notifications via Telegram
 - **🔒 Mock Mode**: Safe testing without real API credentials
 - **⚡ CLI Interface**: Easy command-line access to all features
+- **📱 Auto-refresh**: Web dashboard updates every 30 seconds
 
 ## Project Architecture
 
@@ -37,6 +41,7 @@ This project was originally configured for iOS development using the Briefcase/T
 │   ├── binance_client.py       # Binance API client (with mock mode)
 │   ├── signal_generator.py     # Trading signal generation
 │   ├── telegram_bot.py         # Telegram bot integration
+│   ├── web_app.py              # Flask web application
 │   └── cli.py                  # Command-line interface
 ├── main.py                     # Application entry point
 ├── pyproject.toml              # Project metadata and dependencies
@@ -45,15 +50,36 @@ This project was originally configured for iOS development using the Briefcase/T
 ```
 
 ### Key Components
-1. **Config Module**: Environment-based configuration with mock mode support
-2. **Binance Client**: Abstracts Binance API with mock implementation for testing
-3. **Signal Generator**: Analyzes price data and generates trading recommendations
-4. **Telegram Bot**: Provides remote access via Telegram commands
-5. **CLI**: Command-line interface for local interaction
+1. **Web App**: Flask web dashboard with live market data visualization
+2. **Config Module**: Environment-based configuration with mock mode support
+3. **Binance Client**: Abstracts Binance API with mock implementation for testing
+4. **Signal Generator**: Analyzes price data and generates trading recommendations
+5. **Telegram Bot**: Provides remote access via Telegram commands
+6. **CLI**: Command-line interface for local interaction
 
 ## Usage
 
-### Available Commands
+### Web Dashboard
+The web dashboard is the default mode and starts automatically:
+```bash
+# Start web dashboard (default)
+python main.py
+
+# Or explicitly
+python main.py web
+```
+
+Access the dashboard at `http://localhost:5000` or via the Replit webview.
+
+**Web Dashboard Features:**
+- Live cryptocurrency prices for top trading pairs
+- Market summary with total pairs and last update time
+- Trading signals with buy/sell/hold recommendations
+- Visual indicators for trend and confidence levels
+- Auto-refresh every 30 seconds
+- Mock mode indicator
+
+### CLI Commands
 ```bash
 # Show demo with market data and signals
 python main.py demo
@@ -98,6 +124,17 @@ To enable live mode:
 - **requests (2.32.3)**: HTTP library
 - **python-telegram-bot (>=20.0)**: Telegram bot framework
 - **python-dotenv (>=1.0.0)**: Environment variable management
+- **flask (>=3.0.0)**: Web framework for dashboard
+- **gunicorn (>=23.0.0)**: Production WSGI server
+
+## Deployment
+The application is configured for Autoscale deployment on Replit using Gunicorn as the production WSGI server. The deployment automatically:
+- Binds to port 5000
+- Serves the web dashboard
+- Responds to health checks
+- Scales based on traffic
+
+To publish your deployment, click the "Publish" button in Replit.
 
 ## Development Notes
 - Built for Python 3.11+
@@ -120,4 +157,6 @@ Potential features to add:
 - Advanced technical analysis indicators
 - Portfolio tracking
 - Historical data analysis
-- Web dashboard interface
+- WebSocket support for real-time updates
+- User authentication for multi-user support
+- API endpoints for external integrations
