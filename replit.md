@@ -23,6 +23,8 @@ This project was originally configured for iOS development using the Briefcase/T
   - **Implemented user settings storage using Excel (openpyxl)**
   - **Added comprehensive reporting system (Daily/Weekly/Monthly)**
   - **Support for top 10 trending cryptocurrencies**
+  - **Configured dual workflows: Web Dashboard + Telegram Bot running simultaneously**
+  - **Fixed event loop issues with nest-asyncio for reliable bot operation**
   - Updated dependencies for web + console environment
 
 ## Features
@@ -147,6 +149,7 @@ To enable live mode:
 - **flask (>=3.0.0)**: Web framework for dashboard
 - **gunicorn (>=23.0.0)**: Production WSGI server
 - **openpyxl (>=3.1.0)**: Excel file manipulation for user settings storage
+- **nest-asyncio**: Enables nested event loops for Telegram bot
 
 ## Deployment
 The application is configured for Autoscale deployment on Replit using Gunicorn as the production WSGI server.
