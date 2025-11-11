@@ -125,9 +125,19 @@ The application supports the following environment variables for live mode:
 
 - `BINANCE_API_KEY`: Your Binance API key (optional, uses mock if not set)
 - `BINANCE_API_SECRET`: Your Binance API secret (optional)
-- `TELEGRAM_BOT_TOKEN`: Your Telegram bot token (optional)
+- `TELEGRAM_BOT_TOKEN`: Your Telegram bot token (required for bot)
 - `TELEGRAM_CHAT_ID`: Your Telegram chat ID (optional)
+- `TELEGRAM_ADMIN_IDS`: Comma-separated list of admin Telegram user IDs (optional, e.g., "123456789,987654321")
 - `MOCK_MODE`: Set to 'false' to use live APIs (default: true)
+
+### Admin Setup
+To make yourself an admin:
+1. Send `/myid` to @memo_trader_bot to get your Telegram user ID
+2. Add it to `TELEGRAM_ADMIN_IDS` secret in Replit
+3. Restart the Telegram Bot workflow
+4. Use `/admin` command for admin panel
+
+See `ADMIN_SETUP.md` for detailed instructions.
 
 ### Mock Mode vs Live Mode
 By default, the application runs in **mock mode** with simulated data. This allows you to test all features without:

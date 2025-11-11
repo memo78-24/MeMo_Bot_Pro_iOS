@@ -29,6 +29,10 @@ class EnhancedTelegramBot:
         self.signal_generator = SignalGenerator(self.binance_client)
         self.user_storage = UserStorage()
         self.report_generator = ReportGenerator(self.binance_client, self.signal_generator)
+    
+    def is_admin(self, user_id: int) -> bool:
+        """Check if a user is an admin"""
+        return self.config.is_admin(user_id)
 
     def _get_user_lang(self, user_id: int) -> str:
         settings = self.user_storage.get_user_settings(user_id)
@@ -94,9 +98,15 @@ class EnhancedTelegramBot:
         else:
             lang = settings['language']
         
+        # Show admin status if user is admin
+        welcome_msg = get_text(lang, 'welcome')
+        if self.is_admin(user_id):
+            welcome_msg += f"\n\n🔑 <b>Admin Access Granted</b>\nYour ID: <code>{user_id}</code>"
+        
         await update.message.reply_text(
-            get_text(lang, 'welcome'),
-            reply_markup=self._get_language_keyboard()
+            welcome_msg,
+            reply_markup=self._get_language_keyboard(),
+            parse_mode='HTML'
         )
 
     async def menu_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -317,6 +327,72 @@ Support: support@memobotpro.com"""
             get_text(lang, 'settings'),
             reply_markup=self._get_settings_keyboard(lang)
         )
+    
+    async def myid_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Show user their Telegram ID"""
+        user = update.effective_user
+        user_id = user.id
+        username = user.username or "Not set"
+        lang = self._get_user_lang(user_id)
+        
+        is_admin = self.is_admin(user_id)
+        admin_status = "🔑 <b>Admin</b>" if is_admin else "👤 Regular User"
+        
+        message = f"""
+<b>Your Telegram Information</b>
+
+📋 <b>User ID:</b> <code>{user_id}</code>
+👤 <b>Username:</b> @{username}
+🎭 <b>Name:</b> {user.first_name}
+⚡ <b>Status:</b> {admin_status}
+
+<i>Use this ID to set yourself as admin in the TELEGRAM_ADMIN_IDS environment variable.</i>
+"""
+        
+        await update.message.reply_text(message, parse_mode='HTML')
+    
+    async def admin_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Admin-only command to view bot statistics"""
+        user_id = update.effective_user.id
+        lang = self._get_user_lang(user_id)
+        
+        # Check if user is admin
+        if not self.is_admin(user_id):
+            await update.message.reply_text(
+                "❌ <b>Access Denied</b>\n\nThis command is only available to bot administrators.",
+                parse_mode='HTML'
+            )
+            return
+        
+        # Get stats
+        all_users = self.user_storage.get_all_users()
+        total_users = len(all_users)
+        admin_count = len(self.config.admin_user_ids)
+        
+        # Count languages
+        lang_count = {'en': 0, 'ar': 0}
+        for user in all_users:
+            user_lang = user.get('language', 'en')
+            if user_lang in lang_count:
+                lang_count[user_lang] += 1
+        
+        message = f"""
+🔑 <b>Admin Panel</b>
+
+📊 <b>Bot Statistics:</b>
+👥 Total Users: {total_users}
+🔐 Admins: {admin_count}
+🇬🇧 English Users: {lang_count['en']}
+🇸🇦 Arabic Users: {lang_count['ar']}
+
+⚙️ <b>Configuration:</b>
+🤖 Mock Mode: {"✅ Enabled" if self.config.mock_mode else "❌ Disabled"}
+💱 Binance API: {"✅ Connected" if self.config.validate_binance() else "❌ Not configured"}
+
+<i>Bot Version: 1.0.0</i>
+"""
+        
+        await update.message.reply_text(message, parse_mode='HTML')
 
     async def run(self):
         if not self.config.validate_telegram():
@@ -333,6 +409,8 @@ Support: support@memobotpro.com"""
             app.add_handler(CommandHandler("signals", self.signals_command))
             app.add_handler(CommandHandler("reports", self.reports_command))
             app.add_handler(CommandHandler("settings", self.settings_command))
+            app.add_handler(CommandHandler("myid", self.myid_command))
+            app.add_handler(CommandHandler("admin", self.admin_command))
             app.add_handler(CallbackQueryHandler(self.button_callback))
 
             print("🚀 MeMo Bot Pro Enhanced Telegram Bot is running...")
