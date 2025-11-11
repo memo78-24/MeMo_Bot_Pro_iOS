@@ -15,7 +15,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from .config import Config
 from .binance_client import BinanceClient
 from .signal_generator import SignalGenerator
-from .translations import get_text
+from .translations import get_text, to_arabic_numerals
 from .user_storage import UserStorage
 from .reports import ReportGenerator
 
@@ -109,7 +109,9 @@ class EnhancedTelegramBot:
         # Show admin status if user is admin
         welcome_msg = get_text(lang, 'welcome')
         if self.is_admin(user_id):
-            welcome_msg += f"\n\n🔑 <b>Admin Access Granted</b>\nYour ID: <code>{user_id}</code>"
+            admin_access_text = "Admin Access Granted" if lang == 'en' else "تم منح صلاحيات المشرف"
+            your_id_text = "Your ID:" if lang == 'en' else "معرّفك:"
+            welcome_msg += f"\n\n🔑 <b>{admin_access_text}</b>\n{your_id_text} <code>{to_arabic_numerals(user_id, lang)}</code>"
         
         await update.message.reply_text(
             welcome_msg,
@@ -212,8 +214,10 @@ class EnhancedTelegramBot:
             await query.message.reply_text(report, parse_mode='HTML')
 
         elif data == 'change_lang':
+            lang = self._get_user_lang(user_id)
+            choose_lang_text = "Choose your language:" if lang == 'en' else "اختر لغتك:"
             await query.edit_message_text(
-                "Choose your language:",
+                choose_lang_text,
                 reply_markup=self._get_language_keyboard()
             )
 
@@ -241,23 +245,31 @@ class EnhancedTelegramBot:
         elif data == 'admin_toggle_notif':
             # Admin-only: Toggle auto-notifications globally
             if not self.is_admin(user_id):
-                await query.answer("❌ Admin access required", show_alert=True)
+                lang = self._get_user_lang(user_id)
+                admin_required_text = "❌ Admin access required" if lang == 'en' else "❌ صلاحيات المشرف مطلوبة"
+                await query.answer(admin_required_text, show_alert=True)
                 return
             
             self.auto_notifications_enabled = not self.auto_notifications_enabled
-            status = "enabled" if self.auto_notifications_enabled else "disabled"
-            await query.answer(f"✅ Auto-notifications {status}", show_alert=True)
+            lang = self._get_user_lang(user_id)
+            status_text = get_text(lang, 'enabled') if self.auto_notifications_enabled else get_text(lang, 'disabled')
+            msg = f"✅ {get_text(lang, 'auto_notif_toggled')} {status_text}"
+            await query.answer(msg, show_alert=True)
             
         elif data == 'admin_send_now':
             # Admin-only: Send notifications immediately
             if not self.is_admin(user_id):
-                await query.answer("❌ Admin access required", show_alert=True)
+                lang = self._get_user_lang(user_id)
+                admin_required_text = "❌ Admin access required" if lang == 'en' else "❌ صلاحيات المشرف مطلوبة"
+                await query.answer(admin_required_text, show_alert=True)
                 return
             
-            await query.answer("📤 Sending notifications...", show_alert=False)
+            lang = self._get_user_lang(user_id)
+            sending_text = "📤 Sending notifications..." if lang == 'en' else "📤 جاري إرسال الإشعارات..."
+            await query.answer(sending_text, show_alert=False)
             await self.send_auto_notifications()
             # Send confirmation via new message instead of second answer
-            await query.message.reply_text("✅ Auto-notifications sent successfully!")
+            await query.message.reply_text(get_text(lang, 'auto_notif_sent'))
 
     def _format_signals(self, signals, lang):
         text = f"<b>💡 {get_text(lang, 'signals')}</b>\n\n"
@@ -280,7 +292,7 @@ class EnhancedTelegramBot:
             text += f"💪 {get_text(lang, 'strength')}: {get_text(lang, signal['strength'])}\n"
             text += f"🎯 {action_text} ({get_text(lang, 'confidence')}: {signal['confidence']}%)\n\n"
         
-        return text
+        return to_arabic_numerals(text, lang)
 
     def _format_top_10(self, currencies, lang):
         text = f"<b>📊 {get_text(lang, 'top_10_currencies')}</b>\n\n"
@@ -288,11 +300,11 @@ class EnhancedTelegramBot:
         for idx, curr in enumerate(currencies, 1):
             text += f"{idx}. <b>{curr['symbol']}</b>: ${curr['price']}\n"
         
-        return text
+        return to_arabic_numerals(text, lang)
 
     def _get_help_text(self, lang):
         if lang == 'ar':
-            return """<b>❓ المساعدة</b>
+            text = """<b>❓ المساعدة</b>
 
 <b>الأوامر المتاحة:</b>
 /start - ابدأ التفاعل مع البوت
@@ -303,7 +315,7 @@ class EnhancedTelegramBot:
 
 <b>الميزات:</b>
 • 💡 إشارات تداول فورية
-• 📊 تتبع أفضل 10 عملات رقمية
+• 📊 تتبع أفضل ١٠ عملات رقمية
 • 📈 تقارير يومية/أسبوعية/شهرية
 • 🔄 إشارات تلقائية
 • 🌐 دعم اللغتين العربية والإنجليزية
@@ -311,7 +323,7 @@ class EnhancedTelegramBot:
 <b>تواصل معنا:</b>
 للدعم: support@memobotpro.com"""
         else:
-            return """<b>❓ Help</b>
+            text = """<b>❓ Help</b>
 
 <b>Available Commands:</b>
 /start - Start interacting with the bot
@@ -329,6 +341,7 @@ class EnhancedTelegramBot:
 
 <b>Contact us:</b>
 Support: support@memobotpro.com"""
+        return to_arabic_numerals(text, lang)
 
     async def signals_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         user_id = update.effective_user.id
@@ -361,13 +374,26 @@ Support: support@memobotpro.com"""
         """Show user their Telegram ID"""
         user = update.effective_user
         user_id = user.id
-        username = user.username or "Not set"
         lang = self._get_user_lang(user_id)
+        username = user.username or ("غير محدد" if lang == 'ar' else "Not set")
         
         is_admin = self.is_admin(user_id)
-        admin_status = "🔑 <b>Admin</b>" if is_admin else "👤 Regular User"
         
-        message = f"""
+        if lang == 'ar':
+            admin_status = "🔑 <b>مشرف</b>" if is_admin else "👤 مستخدم عادي"
+            message = f"""
+<b>معلومات تليجرام الخاصة بك</b>
+
+📋 <b>معرّف المستخدم:</b> <code>{user_id}</code>
+👤 <b>اسم المستخدم:</b> @{username}
+🎭 <b>الاسم:</b> {user.first_name}
+⚡ <b>الحالة:</b> {admin_status}
+
+<i>استخدم هذا المعرّف لتعيين نفسك كمشرف في متغير البيئة TELEGRAM_ADMIN_IDS.</i>
+"""
+        else:
+            admin_status = "🔑 <b>Admin</b>" if is_admin else "👤 Regular User"
+            message = f"""
 <b>Your Telegram Information</b>
 
 📋 <b>User ID:</b> <code>{user_id}</code>
@@ -378,6 +404,7 @@ Support: support@memobotpro.com"""
 <i>Use this ID to set yourself as admin in the TELEGRAM_ADMIN_IDS environment variable.</i>
 """
         
+        message = to_arabic_numerals(message, lang)
         await update.message.reply_text(message, parse_mode='HTML')
     
     async def admin_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -387,10 +414,11 @@ Support: support@memobotpro.com"""
         
         # Check if user is admin
         if not self.is_admin(user_id):
-            await update.message.reply_text(
-                "❌ <b>Access Denied</b>\n\nThis command is only available to bot administrators.",
-                parse_mode='HTML'
-            )
+            if lang == 'ar':
+                access_denied_msg = "❌ <b>تم رفض الوصول</b>\n\nهذا الأمر متاح فقط لمشرفي البوت."
+            else:
+                access_denied_msg = "❌ <b>Access Denied</b>\n\nThis command is only available to bot administrators."
+            await update.message.reply_text(access_denied_msg, parse_mode='HTML')
             return
         
         # Get stats
@@ -405,41 +433,74 @@ Support: support@memobotpro.com"""
             if user_lang in lang_count:
                 lang_count[user_lang] += 1
         
-        message = f"""
-🔑 <b>Admin Panel</b>
+        # Count users with auto-signals enabled
+        users_with_auto = len([u for u in all_users if u.get('auto_signals', False)])
+        
+        # Build message based on language
+        if lang == 'ar':
+            enabled_text = f"✅ {get_text(lang, 'enabled')}"
+            disabled_text = f"❌ {get_text(lang, 'disabled')}"
+            connected_text = f"✅ {get_text(lang, 'connected')}"
+            not_configured_text = f"❌ {get_text(lang, 'not_configured')}"
+            
+            message = f"""
+🔑 <b>{get_text(lang, 'admin_panel')}</b>
 
-📊 <b>Bot Statistics:</b>
-👥 Total Users: {total_users}
+📊 <b>{get_text(lang, 'bot_statistics')}</b>
+👥 {get_text(lang, 'total_users')}: {total_users}
+🔐 المشرفون: {admin_count}
+🇬🇧 المستخدمون الإنجليز: {lang_count['en']}
+🇸🇦 المستخدمون العرب: {lang_count['ar']}
+
+⚙️ <b>{get_text(lang, 'configuration')}</b>
+🤖 {get_text(lang, 'mock_mode')}: {enabled_text if self.config.mock_mode else disabled_text}
+💱 {get_text(lang, 'binance_api')}: {connected_text if self.config.validate_binance() else not_configured_text}
+
+🔔 <b>{get_text(lang, 'auto_notifications')}</b>
+📢 {get_text(lang, 'status')}: {enabled_text if self.auto_notifications_enabled else disabled_text}
+👥 {get_text(lang, 'subscribed')}: {users_with_auto}
+🔍 {get_text(lang, 'mode')}: {get_text(lang, 'realtime_price_mode')}
+⏱️ فترة الفحص: كل ٣٠ ثانية
+🛡️ فترة الانتظار: ٥ دقائق لكل عملة لكل مستخدم
+
+<i>نسخة البوت: ١٫٠٫٠</i>
+"""
+        else:
+            enabled_text = f"✅ {get_text(lang, 'enabled')}"
+            disabled_text = f"❌ {get_text(lang, 'disabled')}"
+            connected_text = f"✅ {get_text(lang, 'connected')}"
+            not_configured_text = f"❌ {get_text(lang, 'not_configured')}"
+            
+            message = f"""
+🔑 <b>{get_text(lang, 'admin_panel')}</b>
+
+📊 <b>{get_text(lang, 'bot_statistics')}</b>
+👥 {get_text(lang, 'total_users')}: {total_users}
 🔐 Admins: {admin_count}
 🇬🇧 English Users: {lang_count['en']}
 🇸🇦 Arabic Users: {lang_count['ar']}
 
-⚙️ <b>Configuration:</b>
-🤖 Mock Mode: {"✅ Enabled" if self.config.mock_mode else "❌ Disabled"}
-💱 Binance API: {"✅ Connected" if self.config.validate_binance() else "❌ Not configured"}
+⚙️ <b>{get_text(lang, 'configuration')}</b>
+🤖 {get_text(lang, 'mock_mode')}: {enabled_text if self.config.mock_mode else disabled_text}
+💱 {get_text(lang, 'binance_api')}: {connected_text if self.config.validate_binance() else not_configured_text}
+
+🔔 <b>{get_text(lang, 'auto_notifications')}</b>
+📢 {get_text(lang, 'status')}: {enabled_text if self.auto_notifications_enabled else disabled_text}
+👥 {get_text(lang, 'subscribed')}: {users_with_auto}
+🔍 {get_text(lang, 'mode')}: {get_text(lang, 'realtime_price_mode')}
+⏱️ Check Interval: Every 30 seconds
+🛡️ Cooldown: 5 minutes per symbol per user
 
 <i>Bot Version: 1.0.0</i>
 """
         
-        # Count users with auto-signals enabled
-        users_with_auto = len([u for u in all_users if u.get('auto_signals', False)])
-        
-        # Add auto-notifications status
-        notification_status = f"""
-🔔 <b>Auto-Notifications:</b>
-📢 Status: {"✅ Enabled" if self.auto_notifications_enabled else "❌ Disabled"}
-👥 Subscribed Users: {users_with_auto}
-🔍 Mode: Real-time Price Changes (1%+ threshold)
-⏱️ Check Interval: Every 30 seconds
-🛡️ Cooldown: 5 minutes per symbol per user
-"""
-        message += notification_status
+        message = to_arabic_numerals(message, lang)
         
         # Add admin controls
         keyboard = [[
-            InlineKeyboardButton("🔕 Disable Notifications" if self.auto_notifications_enabled else "🔔 Enable Notifications", 
+            InlineKeyboardButton(get_text(lang, 'disable_notif_btn') if self.auto_notifications_enabled else get_text(lang, 'enable_notif_btn'), 
                                callback_data='admin_toggle_notif'),
-            InlineKeyboardButton("📤 Send Now", callback_data='admin_send_now')
+            InlineKeyboardButton(get_text(lang, 'send_now_btn'), callback_data='admin_send_now')
         ]]
         
         await update.message.reply_text(message, parse_mode='HTML', reply_markup=InlineKeyboardMarkup(keyboard))
@@ -519,28 +580,19 @@ Support: support@memobotpro.com"""
                 direction_text = get_text(lang, 'up') if change_percent > 0 else get_text(lang, 'down')
                 
                 # Create alert message
-                if lang == 'ar':
-                    message = f"""
-🚨 <b>تنبيه تغيير السعر!</b>
+                message = f"""
+🚨 <b>{get_text(lang, 'price_change_alert')}</b>
 
 {direction} <b>{symbol}</b>
-💰 السعر السابق: ${previous_price:.2f}
-💰 السعر الحالي: ${current_price:.2f}
-📊 التغيير: {change_percent:+.2f}% {direction_text}
+💰 {get_text(lang, 'previous_price')}: ${previous_price:.2f}
+💰 {get_text(lang, 'current_price')}: ${current_price:.2f}
+📊 {get_text(lang, 'change')}: {change_percent:+.2f}% {direction_text}
 
-<i>تحديث تلقائي في الوقت الفعلي</i>
+<i>{get_text(lang, 'realtime_update')}</i>
 """
-                else:
-                    message = f"""
-🚨 <b>Price Change Alert!</b>
-
-{direction} <b>{symbol}</b>
-💰 Previous Price: ${previous_price:.2f}
-💰 Current Price: ${current_price:.2f}
-📊 Change: {change_percent:+.2f}% {direction_text}
-
-<i>Real-time automatic update</i>
-"""
+                
+                # Convert numbers to Arabic numerals for Arabic users
+                message = to_arabic_numerals(message, lang)
                 
                 await self.app.bot.send_message(
                     chat_id=user_id,
