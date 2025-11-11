@@ -1,5 +1,6 @@
 import asyncio
 from typing import Optional
+from datetime import datetime
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
     Application,
@@ -9,6 +10,7 @@ from telegram.ext import (
     MessageHandler,
     filters
 )
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from .config import Config
 from .binance_client import BinanceClient
@@ -29,6 +31,9 @@ class EnhancedTelegramBot:
         self.signal_generator = SignalGenerator(self.binance_client)
         self.user_storage = UserStorage()
         self.report_generator = ReportGenerator(self.binance_client, self.signal_generator)
+        self.scheduler = AsyncIOScheduler()
+        self.app = None
+        self.auto_notifications_enabled = True
     
     def is_admin(self, user_id: int) -> bool:
         """Check if a user is an admin"""
@@ -229,6 +234,26 @@ class EnhancedTelegramBot:
                 text,
                 reply_markup=InlineKeyboardMarkup(keyboard)
             )
+        
+        elif data == 'admin_toggle_notif':
+            # Admin-only: Toggle auto-notifications globally
+            if not self.is_admin(user_id):
+                await query.answer("❌ Admin access required", show_alert=True)
+                return
+            
+            self.auto_notifications_enabled = not self.auto_notifications_enabled
+            status = "enabled" if self.auto_notifications_enabled else "disabled"
+            await query.answer(f"✅ Auto-notifications {status}", show_alert=True)
+            
+        elif data == 'admin_send_now':
+            # Admin-only: Send notifications immediately
+            if not self.is_admin(user_id):
+                await query.answer("❌ Admin access required", show_alert=True)
+                return
+            
+            await query.answer("📤 Sending notifications...", show_alert=False)
+            await self.send_auto_notifications()
+            await query.answer("✅ Notifications sent!", show_alert=True)
 
     def _format_signals(self, signals, lang):
         text = f"<b>💡 {get_text(lang, 'signals')}</b>\n\n"
@@ -392,7 +417,70 @@ Support: support@memobotpro.com"""
 <i>Bot Version: 1.0.0</i>
 """
         
-        await update.message.reply_text(message, parse_mode='HTML')
+        # Count users with auto-signals enabled
+        users_with_auto = len([u for u in all_users if u.get('auto_signals', False)])
+        
+        # Add auto-notifications status
+        notification_status = f"""
+🔔 <b>Auto-Notifications:</b>
+📢 Status: {"✅ Enabled" if self.auto_notifications_enabled else "❌ Disabled"}
+👥 Subscribed Users: {users_with_auto}
+⏰ Frequency: Every 2 hours
+"""
+        message += notification_status
+        
+        # Add admin controls
+        keyboard = [[
+            InlineKeyboardButton("🔕 Disable Notifications" if self.auto_notifications_enabled else "🔔 Enable Notifications", 
+                               callback_data='admin_toggle_notif'),
+            InlineKeyboardButton("📤 Send Now", callback_data='admin_send_now')
+        ]]
+        
+        await update.message.reply_text(message, parse_mode='HTML', reply_markup=InlineKeyboardMarkup(keyboard))
+    
+    async def send_auto_notifications(self):
+        """Send automatic trading signals to all subscribed users"""
+        if not self.auto_notifications_enabled or not self.app:
+            return
+        
+        try:
+            # Get all users with auto-signals enabled
+            users = self.user_storage.get_all_users_with_auto_signals()
+            
+            if not users:
+                print("📭 No users subscribed to auto-notifications")
+                return
+            
+            # Generate fresh signals
+            signals = self.signal_generator.generate_signals()
+            
+            # Send to each subscribed user
+            sent_count = 0
+            for user in users:
+                try:
+                    user_id = user['user_id']
+                    lang = user.get('language', 'en')
+                    
+                    # Format signals
+                    signals_text = self._format_signals(signals, lang)
+                    header = f"🔔 <b>{get_text(lang, 'auto_notification_header')}</b>\n\n"
+                    
+                    await self.app.bot.send_message(
+                        chat_id=user_id,
+                        text=header + signals_text,
+                        parse_mode='HTML'
+                    )
+                    sent_count += 1
+                    await asyncio.sleep(0.5)  # Rate limiting
+                    
+                except Exception as e:
+                    print(f"❌ Error sending to user {user_id}: {e}")
+            
+            current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            print(f"✅ Auto-notifications sent to {sent_count} users at {current_time}")
+            
+        except Exception as e:
+            print(f"❌ Error in auto-notifications: {e}")
 
     async def run(self):
         if not self.config.validate_telegram():
@@ -400,32 +488,49 @@ Support: support@memobotpro.com"""
             print("Please set the environment variable to enable the Telegram bot.")
             return
 
-        app = None
+        self.app = None
         try:
-            app = Application.builder().token(self.config.telegram_bot_token).build()
+            self.app = Application.builder().token(self.config.telegram_bot_token).build()
 
-            app.add_handler(CommandHandler("start", self.start_command))
-            app.add_handler(CommandHandler("menu", self.menu_command))
-            app.add_handler(CommandHandler("signals", self.signals_command))
-            app.add_handler(CommandHandler("reports", self.reports_command))
-            app.add_handler(CommandHandler("settings", self.settings_command))
-            app.add_handler(CommandHandler("myid", self.myid_command))
-            app.add_handler(CommandHandler("admin", self.admin_command))
-            app.add_handler(CallbackQueryHandler(self.button_callback))
+            self.app.add_handler(CommandHandler("start", self.start_command))
+            self.app.add_handler(CommandHandler("menu", self.menu_command))
+            self.app.add_handler(CommandHandler("signals", self.signals_command))
+            self.app.add_handler(CommandHandler("reports", self.reports_command))
+            self.app.add_handler(CommandHandler("settings", self.settings_command))
+            self.app.add_handler(CommandHandler("myid", self.myid_command))
+            self.app.add_handler(CommandHandler("admin", self.admin_command))
+            self.app.add_handler(CallbackQueryHandler(self.button_callback))
 
+            # Start auto-notification scheduler (every 2 hours)
+            self.scheduler.add_job(
+                self.send_auto_notifications,
+                'interval',
+                hours=2,
+                id='auto_notifications',
+                name='Send Auto Notifications'
+            )
+            self.scheduler.start()
+            
             print("🚀 MeMo Bot Pro Enhanced Telegram Bot is running...")
             print("✅ Features: EN/AR support, Interactive menus, Auto signals, Reports")
+            print("🔔 Auto-notifications: Enabled (every 2 hours)")
             print("Press Ctrl+C to stop")
             
-            await app.run_polling(allowed_updates=Update.ALL_TYPES)
+            await self.app.run_polling(allowed_updates=Update.ALL_TYPES)
 
         except KeyboardInterrupt:
             print("\n⚠️ Bot stopped by user")
         except Exception as e:
             print(f"❌ Error starting bot: {str(e)}")
         finally:
-            if app and app.running:
+            # Shutdown scheduler
+            if self.scheduler.running:
+                self.scheduler.shutdown(wait=False)
+                print("🔕 Auto-notification scheduler stopped")
+            
+            # Shutdown bot
+            if self.app and self.app.running:
                 try:
-                    await app.stop()
+                    await self.app.stop()
                 except:
                     pass

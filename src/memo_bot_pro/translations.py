@@ -43,6 +43,7 @@ TRANSLATIONS = {
         'strong': "Strong",
         'moderate': "Moderate",
         'weak': "Weak",
+        'auto_notification_header': "Automatic Trading Signals",
     },
     'ar': {
         'welcome': "👋 مرحباً بك في ميمو بوت برو!\n\n"
@@ -88,6 +89,7 @@ TRANSLATIONS = {
         'strong': "قوي",
         'moderate': "متوسط",
         'weak': "ضعيف",
+        'auto_notification_header': "إشارات التداول التلقائية",
     }
 }
 
