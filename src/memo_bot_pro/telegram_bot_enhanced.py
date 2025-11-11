@@ -47,10 +47,11 @@ class EnhancedTelegramBot:
         return settings['language'] if settings else 'en'
 
     def _get_language_keyboard(self):
+        # Show language names in their native form
         keyboard = [
             [
-                InlineKeyboardButton("🇬🇧 English", callback_data='lang_en'),
-                InlineKeyboardButton("🇸🇦 العربية", callback_data='lang_ar')
+                InlineKeyboardButton(get_text('en', 'lang_button_en'), callback_data='lang_en'),
+                InlineKeyboardButton(get_text('en', 'lang_button_ar'), callback_data='lang_ar')
             ]
         ]
         return InlineKeyboardMarkup(keyboard)
@@ -97,9 +98,12 @@ class EnhancedTelegramBot:
     async def start_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         user = update.effective_user
         user_id = user.id
-        username = user.username or user.first_name or "User"
-        
+        lang_temp = 'en'  # Default for fallback username
         settings = self.user_storage.get_user_settings(user_id)
+        if settings:
+            lang_temp = settings['language']
+        username = user.username or user.first_name or get_text(lang_temp, 'fallback_username')
+        
         if not settings:
             self.user_storage.save_user_settings(user_id, username, {'language': 'en'})
             lang = 'en'
@@ -132,7 +136,8 @@ class EnhancedTelegramBot:
         await query.answer()
         
         user_id = update.effective_user.id
-        username = update.effective_user.username or update.effective_user.first_name or "User"
+        lang_temp = self._get_user_lang(user_id) or 'en'
+        username = update.effective_user.username or update.effective_user.first_name or get_text(lang_temp, 'fallback_username')
         data = query.data
 
         if data.startswith('lang_'):
@@ -298,44 +303,7 @@ class EnhancedTelegramBot:
         return to_arabic_numerals(text, lang)
 
     def _get_help_text(self, lang):
-        if lang == 'ar':
-            text = """<b>❓ المساعدة</b>
-
-<b>الأوامر المتاحة:</b>
-/start - ابدأ التفاعل مع البوت
-/menu - عرض القائمة الرئيسية
-/signals - احصل على إشارات التداول
-/reports - عرض التقارير
-/settings - إعدادات حسابك
-
-<b>الميزات:</b>
-• 💡 إشارات تداول فورية
-• 📊 تتبع أفضل ١٠ عملات رقمية
-• 📈 تقارير يومية/أسبوعية/شهرية
-• 🔄 إشارات تلقائية
-• 🌐 دعم اللغتين العربية والإنجليزية
-
-<b>تواصل معنا:</b>
-للدعم: support@memobotpro.com"""
-        else:
-            text = """<b>❓ Help</b>
-
-<b>Available Commands:</b>
-/start - Start interacting with the bot
-/menu - Show main menu
-/signals - Get trading signals
-/reports - View reports
-/settings - Your account settings
-
-<b>Features:</b>
-• 💡 Real-time trading signals
-• 📊 Track top 10 cryptocurrencies
-• 📈 Daily/Weekly/Monthly reports
-• 🔄 Automatic signals
-• 🌐 Arabic/English support
-
-<b>Contact us:</b>
-Support: support@memobotpro.com"""
+        text = get_text(lang, 'help_text')
         return to_arabic_numerals(text, lang)
 
     async def signals_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):

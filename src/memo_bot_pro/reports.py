@@ -23,7 +23,7 @@ class ReportGenerator:
         elif report_type == 'monthly':
             return self._generate_monthly_report(lang)
         else:
-            return "Unknown report type"
+            return to_arabic_numerals(get_text(lang, 'unknown_report_type'), lang)
     
     def _generate_daily_report(self, lang: str) -> str:
         today = datetime.now().strftime('%Y-%m-%d')

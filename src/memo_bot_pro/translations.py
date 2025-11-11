@@ -97,6 +97,34 @@ TRANSLATIONS = {
         'admin_label': "Admin",
         'regular_user': "Regular User",
         'myid_instruction': "Use this ID to set yourself as admin in the TELEGRAM_ADMIN_IDS environment variable.",
+        
+        # Fallback values
+        'fallback_username': "User",
+        'unknown_report_type': "Unknown report type",
+        
+        # Help text
+        'help_text': """<b>❓ Help</b>
+
+<b>Available Commands:</b>
+/start - Start interacting with the bot
+/menu - Show main menu
+/signals - Get trading signals
+/reports - View reports
+/settings - Your account settings
+
+<b>Features:</b>
+• 💡 Real-time trading signals
+• 📊 Top 10 trending cryptocurrencies
+• 📈 Daily/Weekly/Monthly reports
+• 🔄 Auto signals
+• 🌐 English & Arabic support
+
+<b>Contact us:</b>
+Support: support@memobotpro.com""",
+        
+        # Language selector buttons (always show in native form)
+        'lang_button_en': "🇬🇧 English",
+        'lang_button_ar': "🇸🇦 العربية",
     },
     'ar': {
         'welcome': "👋 مرحباً بك في ميمو بوت برو!\n\n"
@@ -196,6 +224,34 @@ TRANSLATIONS = {
         'admin_label': "مشرف",
         'regular_user': "مستخدم عادي",
         'myid_instruction': "استخدم هذا المعرّف لتعيين نفسك كمشرف في متغير البيئة TELEGRAM_ADMIN_IDS.",
+        
+        # Fallback values
+        'fallback_username': "مستخدم",
+        'unknown_report_type': "نوع تقرير غير معروف",
+        
+        # Help text
+        'help_text': """<b>❓ المساعدة</b>
+
+<b>الأوامر المتاحة:</b>
+/start - ابدأ التفاعل مع البوت
+/menu - عرض القائمة الرئيسية
+/signals - احصل على إشارات التداول
+/reports - عرض التقارير
+/settings - إعدادات حسابك
+
+<b>الميزات:</b>
+• 💡 إشارات تداول فورية
+• 📊 تتبع أفضل ١٠ عملات رقمية
+• 📈 تقارير يومية/أسبوعية/شهرية
+• 🔄 إشارات تلقائية
+• 🌐 دعم اللغتين العربية والإنجليزية
+
+<b>تواصل معنا:</b>
+للدعم: support@memobotpro.com""",
+        
+        # Language selector buttons (always show in native form)
+        'lang_button_en': "🇬🇧 English",
+        'lang_button_ar': "🇸🇦 العربية",
     }
 }
 
