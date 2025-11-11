@@ -11,11 +11,14 @@ MeMo Bot Pro is a Binance Advisory & Live Trading assistant with Telegram integr
 This project was originally configured for iOS development using the Briefcase/Toga framework but has been adapted for Replit's Linux environment with both web interface and CLI functionality. The core functionality (Binance integration and Telegram bot) remains the same.
 
 ## Recent Changes
-- **November 11, 2025 (Latest)**: Added automatic notification system
-  - Implemented APScheduler for background notifications every 2 hours
+- **November 11, 2025 (Latest)**: Upgraded to real-time price-change alerts
+  - Replaced time-based notifications with continuous price monitoring
+  - Sends alerts immediately when prices change by 1% or more (up or down)
+  - Monitors top 10 cryptocurrencies every 30 seconds
+  - 5-minute cooldown per symbol per user to prevent spam
+  - Dual language support (EN/AR) for price alerts
   - Added admin panel controls to toggle notifications and send on-demand
   - Users can subscribe/unsubscribe via settings menu
-  - Dual language support for notification messages
 - **November 11, 2025**: Converted from iOS Toga app to web + console-based Python application
   - Created complete source structure under `src/memo_bot_pro/`
   - Implemented Binance client with mock mode for testing
@@ -39,8 +42,10 @@ This project was originally configured for iOS development using the Briefcase/T
   - 💡 Real-time trading signals with click options
   - ⚙️ User settings management
   - 📊 Top 10 trending currencies tracking
-  - 🔔 **Auto-notifications**: Automatic signal delivery every 2 hours to subscribed users
-  - 👑 **Admin controls**: Toggle notifications globally and send on-demand
+  - 🔔 **Real-time Price Alerts**: Instant notifications on 1%+ price changes (up/down)
+  - ⚡ **Live Monitoring**: Checks prices every 30 seconds for immediate alerts
+  - 🛡️ **Smart Cooldown**: 5-minute pause per symbol to prevent notification spam
+  - 👑 **Admin controls**: Toggle notifications globally and monitor system status
 - **🌐 Web Dashboard**: Beautiful web interface showing live market data and signals
 - **📊 Market Data**: Real-time cryptocurrency price tracking for top 10 currencies
 - **💡 Trading Signals**: Automated signal generation with trend analysis

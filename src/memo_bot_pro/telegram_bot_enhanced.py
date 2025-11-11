@@ -456,7 +456,7 @@ Support: support@memobotpro.com"""
                     continue
                 
                 # Get current prices from top 10
-                current_data = self.binance_client.get_top_10_prices()
+                current_data = self.binance_client.get_top_10_currencies()
                 
                 # Get subscribed users
                 users = self.user_storage.get_all_users_with_auto_signals()
