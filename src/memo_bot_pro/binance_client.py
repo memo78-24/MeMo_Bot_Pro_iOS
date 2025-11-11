@@ -58,15 +58,26 @@ class BinanceClient:
                 self.mock = True
 
     def get_price(self, symbol: str = 'BTCUSDT') -> Dict:
-        return self.client.get_ticker_price(symbol=symbol)
+        if self.mock:
+            return self.client.get_ticker_price(symbol=symbol)
+        else:
+            result = self.client.get_symbol_ticker(symbol=symbol)
+            return result
 
     def get_all_prices(self) -> List[Dict]:
         if self.mock:
             return self.client.get_all_tickers()
-        return self.client.get_all_tickers()
+        else:
+            tickers = self.client.get_all_tickers()
+            top_10_symbols = ['BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'SOLUSDT', 'XRPUSDT', 
+                            'ADAUSDT', 'DOGEUSDT', 'DOTUSDT', 'MATICUSDT', 'LTCUSDT']
+            return [t for t in tickers if t['symbol'] in top_10_symbols][:10]
 
     def get_account_info(self) -> Dict:
-        return self.client.get_account()
+        if self.mock:
+            return self.client.get_account()
+        else:
+            return self.client.get_account()
 
     def get_market_summary(self) -> Dict:
         prices = self.get_all_prices()
