@@ -26,7 +26,7 @@ outputType = "webview"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "python main.py"
+args = "gunicorn --bind=0.0.0.0:5000 --reuse-port --workers=2 src.memo_bot_pro.web_app:app"
 waitForPort = 5000
 
 [deployment]
@@ -36,7 +36,3 @@ run = ["gunicorn", "--bind=0.0.0.0:5000", "--reuse-port", "--workers=2", "src.me
 [[ports]]
 localPort = 5000
 externalPort = 80
-
-[[ports]]
-localPort = 42017
-externalPort = 3000
