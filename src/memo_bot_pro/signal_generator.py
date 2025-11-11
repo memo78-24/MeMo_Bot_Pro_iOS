@@ -1,4 +1,4 @@
-from typing import Dict, List
+from typing import Dict, List, Optional
 import random
 
 
@@ -6,7 +6,7 @@ class SignalGenerator:
     def __init__(self, binance_client):
         self.client = binance_client
 
-    def generate_signals(self, symbols: List[str] = None) -> List[Dict]:
+    def generate_signals(self, symbols: Optional[List[str]] = None) -> List[Dict]:
         if symbols is None:
             symbols = ['BTCUSDT', 'ETHUSDT', 'BNBUSDT']
 
