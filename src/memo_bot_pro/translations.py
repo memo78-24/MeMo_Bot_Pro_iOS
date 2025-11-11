@@ -44,6 +44,8 @@ TRANSLATIONS = {
         'moderate': "Moderate",
         'weak': "Weak",
         'auto_notification_header': "Automatic Trading Signals",
+        'up': "UP",
+        'down': "DOWN",
     },
     'ar': {
         'welcome': "👋 مرحباً بك في ميمو بوت برو!\n\n"
@@ -90,6 +92,8 @@ TRANSLATIONS = {
         'moderate': "متوسط",
         'weak': "ضعيف",
         'auto_notification_header': "إشارات التداول التلقائية",
+        'up': "صعود",
+        'down': "هبوط",
     }
 }
 

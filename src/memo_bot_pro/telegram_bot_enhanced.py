@@ -34,6 +34,9 @@ class EnhancedTelegramBot:
         self.scheduler = AsyncIOScheduler()
         self.app = None
         self.auto_notifications_enabled = True
+        self.previous_prices = {}  # Track previous prices for change detection
+        self.last_notification_time = {}  # Track last notification per symbol per user
+        self.price_monitor_running = False
     
     def is_admin(self, user_id: int) -> bool:
         """Check if a user is an admin"""
@@ -426,7 +429,9 @@ Support: support@memobotpro.com"""
 🔔 <b>Auto-Notifications:</b>
 📢 Status: {"✅ Enabled" if self.auto_notifications_enabled else "❌ Disabled"}
 👥 Subscribed Users: {users_with_auto}
-⏰ Frequency: Every 2 hours
+🔍 Mode: Real-time Price Changes (1%+ threshold)
+⏱️ Check Interval: Every 30 seconds
+🛡️ Cooldown: 5 minutes per symbol per user
 """
         message += notification_status
         
@@ -439,49 +444,120 @@ Support: support@memobotpro.com"""
         
         await update.message.reply_text(message, parse_mode='HTML', reply_markup=InlineKeyboardMarkup(keyboard))
     
-    async def send_auto_notifications(self):
-        """Send automatic trading signals to all subscribed users"""
-        if not self.auto_notifications_enabled or not self.app:
-            return
+    async def monitor_price_changes(self):
+        """Continuously monitor prices and send notifications on significant changes"""
+        print("🔍 Price monitoring started - checking every 30 seconds")
+        self.price_monitor_running = True
         
-        try:
-            # Get all users with auto-signals enabled
-            users = self.user_storage.get_all_users_with_auto_signals()
-            
-            if not users:
-                print("📭 No users subscribed to auto-notifications")
-                return
-            
-            # Generate fresh signals
-            signals = self.signal_generator.generate_signals()
-            
-            # Send to each subscribed user
-            sent_count = 0
-            for user in users:
-                try:
-                    user_id = user['user_id']
-                    lang = user.get('language', 'en')
+        while self.price_monitor_running:
+            try:
+                if not self.auto_notifications_enabled or not self.app:
+                    await asyncio.sleep(30)
+                    continue
+                
+                # Get current prices from top 10
+                current_data = self.binance_client.get_top_10_prices()
+                
+                # Get subscribed users
+                users = self.user_storage.get_all_users_with_auto_signals()
+                
+                if not users:
+                    await asyncio.sleep(30)
+                    continue
+                
+                # Check each symbol for price changes
+                for symbol_data in current_data:
+                    symbol = symbol_data['symbol']
+                    current_price = float(symbol_data['price'])
                     
-                    # Format signals
-                    signals_text = self._format_signals(signals, lang)
-                    header = f"🔔 <b>{get_text(lang, 'auto_notification_header')}</b>\n\n"
+                    # Initialize previous price if first time
+                    if symbol not in self.previous_prices:
+                        self.previous_prices[symbol] = current_price
+                        continue
                     
-                    await self.app.bot.send_message(
-                        chat_id=user_id,
-                        text=header + signals_text,
-                        parse_mode='HTML'
-                    )
-                    sent_count += 1
-                    await asyncio.sleep(0.5)  # Rate limiting
+                    previous_price = self.previous_prices[symbol]
                     
-                except Exception as e:
-                    print(f"❌ Error sending to user {user_id}: {e}")
-            
-            current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            print(f"✅ Auto-notifications sent to {sent_count} users at {current_time}")
-            
-        except Exception as e:
-            print(f"❌ Error in auto-notifications: {e}")
+                    # Calculate percentage change
+                    if previous_price > 0:
+                        change_percent = ((current_price - previous_price) / previous_price) * 100
+                    else:
+                        continue
+                    
+                    # Check if change is significant (threshold: 1%)
+                    if abs(change_percent) >= 1.0:
+                        # Send notification to all subscribed users
+                        await self._send_price_change_alerts(symbol, current_price, previous_price, change_percent, users)
+                        
+                        # Update previous price after notification
+                        self.previous_prices[symbol] = current_price
+                
+                await asyncio.sleep(30)  # Check every 30 seconds
+                
+            except Exception as e:
+                print(f"❌ Error in price monitoring: {e}")
+                await asyncio.sleep(30)
+    
+    async def _send_price_change_alerts(self, symbol, current_price, previous_price, change_percent, users):
+        """Send price change alert to subscribed users"""
+        sent_count = 0
+        current_time = datetime.now()
+        
+        for user in users:
+            try:
+                user_id = user['user_id']
+                lang = user.get('language', 'en')
+                
+                # Check cooldown (5 minutes per symbol per user)
+                cooldown_key = f"{user_id}_{symbol}"
+                if cooldown_key in self.last_notification_time:
+                    time_since_last = (current_time - self.last_notification_time[cooldown_key]).total_seconds()
+                    if time_since_last < 300:  # 5 minutes cooldown
+                        continue
+                
+                # Determine direction
+                direction = "📈" if change_percent > 0 else "📉"
+                direction_text = get_text(lang, 'up') if change_percent > 0 else get_text(lang, 'down')
+                
+                # Create alert message
+                if lang == 'ar':
+                    message = f"""
+🚨 <b>تنبيه تغيير السعر!</b>
+
+{direction} <b>{symbol}</b>
+💰 السعر السابق: ${previous_price:.2f}
+💰 السعر الحالي: ${current_price:.2f}
+📊 التغيير: {change_percent:+.2f}% {direction_text}
+
+<i>تحديث تلقائي في الوقت الفعلي</i>
+"""
+                else:
+                    message = f"""
+🚨 <b>Price Change Alert!</b>
+
+{direction} <b>{symbol}</b>
+💰 Previous Price: ${previous_price:.2f}
+💰 Current Price: ${current_price:.2f}
+📊 Change: {change_percent:+.2f}% {direction_text}
+
+<i>Real-time automatic update</i>
+"""
+                
+                await self.app.bot.send_message(
+                    chat_id=user_id,
+                    text=message,
+                    parse_mode='HTML'
+                )
+                
+                # Update last notification time
+                self.last_notification_time[cooldown_key] = current_time
+                sent_count += 1
+                await asyncio.sleep(0.3)  # Rate limiting
+                
+            except Exception as e:
+                print(f"❌ Error sending price alert to user {user_id}: {e}")
+        
+        if sent_count > 0:
+            print(f"📢 Price alert sent: {symbol} {change_percent:+.2f}% to {sent_count} users")
 
     async def run(self):
         if not self.config.validate_telegram():
@@ -502,19 +578,12 @@ Support: support@memobotpro.com"""
             self.app.add_handler(CommandHandler("admin", self.admin_command))
             self.app.add_handler(CallbackQueryHandler(self.button_callback))
 
-            # Start auto-notification scheduler (every 2 hours)
-            self.scheduler.add_job(
-                self.send_auto_notifications,
-                'interval',
-                hours=2,
-                id='auto_notifications',
-                name='Send Auto Notifications'
-            )
-            self.scheduler.start()
+            # Start price monitoring task
+            price_monitor_task = asyncio.create_task(self.monitor_price_changes())
             
             print("🚀 MeMo Bot Pro Enhanced Telegram Bot is running...")
             print("✅ Features: EN/AR support, Interactive menus, Auto signals, Reports")
-            print("🔔 Auto-notifications: Enabled (every 2 hours)")
+            print("🔔 Price Change Alerts: Enabled (1%+ threshold, 30s checks)")
             print("Press Ctrl+C to stop")
             
             await self.app.run_polling(allowed_updates=Update.ALL_TYPES)
@@ -524,10 +593,9 @@ Support: support@memobotpro.com"""
         except Exception as e:
             print(f"❌ Error starting bot: {str(e)}")
         finally:
-            # Shutdown scheduler
-            if self.scheduler.running:
-                self.scheduler.shutdown(wait=False)
-                print("🔕 Auto-notification scheduler stopped")
+            # Stop price monitoring
+            self.price_monitor_running = False
+            print("🔕 Price monitoring stopped")
             
             # Shutdown bot
             if self.app and self.app.running:
