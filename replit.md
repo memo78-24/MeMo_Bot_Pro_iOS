@@ -11,6 +11,11 @@ MeMo Bot Pro is a Binance Advisory & Live Trading assistant with Telegram integr
 This project was originally configured for iOS development using the Briefcase/Toga framework but has been adapted for Replit's Linux environment with both web interface and CLI functionality. The core functionality (Binance integration and Telegram bot) remains the same.
 
 ## Recent Changes
+- **November 11, 2025 (Latest)**: Added automatic notification system
+  - Implemented APScheduler for background notifications every 2 hours
+  - Added admin panel controls to toggle notifications and send on-demand
+  - Users can subscribe/unsubscribe via settings menu
+  - Dual language support for notification messages
 - **November 11, 2025**: Converted from iOS Toga app to web + console-based Python application
   - Created complete source structure under `src/memo_bot_pro/`
   - Implemented Binance client with mock mode for testing
@@ -34,7 +39,8 @@ This project was originally configured for iOS development using the Briefcase/T
   - 💡 Real-time trading signals with click options
   - ⚙️ User settings management
   - 📊 Top 10 trending currencies tracking
-  - 🔄 Auto-signal notifications
+  - 🔔 **Auto-notifications**: Automatic signal delivery every 2 hours to subscribed users
+  - 👑 **Admin controls**: Toggle notifications globally and send on-demand
 - **🌐 Web Dashboard**: Beautiful web interface showing live market data and signals
 - **📊 Market Data**: Real-time cryptocurrency price tracking for top 10 currencies
 - **💡 Trading Signals**: Automated signal generation with trend analysis
@@ -160,6 +166,7 @@ To enable live mode:
 - **gunicorn (>=23.0.0)**: Production WSGI server
 - **openpyxl (>=3.1.0)**: Excel file manipulation for user settings storage
 - **nest-asyncio**: Enables nested event loops for Telegram bot
+- **APScheduler**: Background task scheduler for auto-notifications
 
 ## Deployment
 The application is configured for Autoscale deployment on Replit using Gunicorn as the production WSGI server.

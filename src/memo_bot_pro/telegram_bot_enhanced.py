@@ -253,7 +253,8 @@ class EnhancedTelegramBot:
             
             await query.answer("📤 Sending notifications...", show_alert=False)
             await self.send_auto_notifications()
-            await query.answer("✅ Notifications sent!", show_alert=True)
+            # Send confirmation via new message instead of second answer
+            await query.message.reply_text("✅ Auto-notifications sent successfully!")
 
     def _format_signals(self, signals, lang):
         text = f"<b>💡 {get_text(lang, 'signals')}</b>\n\n"
