@@ -9,7 +9,12 @@ class MockBinanceClient:
             'ETHUSDT': 3200.75,
             'BNBUSDT': 450.25,
             'SOLUSDT': 120.30,
-            'XRPUSDT': 0.62
+            'XRPUSDT': 0.62,
+            'ADAUSDT': 0.45,
+            'DOGEUSDT': 0.08,
+            'DOTUSDT': 7.25,
+            'MATICUSDT': 0.85,
+            'LTCUSDT': 72.50
         }
 
     def get_ticker_price(self, symbol: str) -> Dict:
@@ -68,5 +73,8 @@ class BinanceClient:
         return {
             'timestamp': time.time(),
             'total_pairs': len(prices),
-            'top_pairs': prices[:5] if prices else []
+            'top_pairs': prices[:10] if prices else []
         }
+    
+    def get_top_10_currencies(self) -> List[Dict]:
+        return self.get_all_prices()[:10]

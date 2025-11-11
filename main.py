@@ -27,7 +27,13 @@ def main():
     elif command == 'signals':
         cli.run_signals()
     elif command == 'telegram':
-        cli.run_telegram_bot()
+        import asyncio
+        from src.memo_bot_pro.config import Config
+        from src.memo_bot_pro.telegram_bot_enhanced import EnhancedTelegramBot
+        
+        config = Config.from_env()
+        bot = EnhancedTelegramBot(config)
+        asyncio.run(bot.run())
     elif command == 'help' or command == '--help' or command == '-h':
         cli.show_help()
     else:
