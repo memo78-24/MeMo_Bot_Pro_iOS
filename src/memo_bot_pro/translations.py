@@ -26,6 +26,10 @@ TRANSLATIONS = {
         'settings_saved': "✅ Settings saved successfully!",
         'auto_signals_on': "✅ Auto signals enabled! You'll receive signals automatically.",
         'auto_signals_off': "🔕 Auto signals disabled.",
+        'notifications_settings': "🔔 Notification Settings\n\nManage your signal notifications:",
+        'enable_notifications': "🔔 Enable Notifications",
+        'disable_notifications': "🔕 Disable Notifications",
+        'notifications_status': "📊 Current Status",
         'buy_signal': "🟢 BUY",
         'sell_signal': "🔴 SELL",
         'hold_signal': "🟡 HOLD",
@@ -67,6 +71,10 @@ TRANSLATIONS = {
         'settings_saved': "✅ تم حفظ الإعدادات بنجاح!",
         'auto_signals_on': "✅ تم تفعيل الإشارات التلقائية! ستتلقى الإشارات تلقائياً.",
         'auto_signals_off': "🔕 تم إيقاف الإشارات التلقائية.",
+        'notifications_settings': "🔔 إعدادات الإشعارات\n\nإدارة إشعارات الإشارات:",
+        'enable_notifications': "🔔 تفعيل الإشعارات",
+        'disable_notifications': "🔕 إيقاف الإشعارات",
+        'notifications_status': "📊 الحالة الحالية",
         'buy_signal': "🟢 شراء",
         'sell_signal': "🔴 بيع",
         'hold_signal': "🟡 انتظار",

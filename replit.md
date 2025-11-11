@@ -19,13 +19,25 @@ This project was originally configured for iOS development using the Briefcase/T
   - Added CLI interface with multiple commands
   - **Added Flask web dashboard with live market data and signals**
   - **Configured for production deployment with Gunicorn**
+  - **Enhanced Telegram bot with interactive buttons and dual EN/AR language support**
+  - **Implemented user settings storage using Excel (openpyxl)**
+  - **Added comprehensive reporting system (Daily/Weekly/Monthly)**
+  - **Support for top 10 trending cryptocurrencies**
   - Updated dependencies for web + console environment
 
 ## Features
+- **🤖 Interactive Telegram Bot**: FIRST-TO-MARKET Arabic crypto trading assistant
+  - 🌐 Dual language support (English/Arabic)
+  - 📲 Interactive button menus for easy navigation
+  - 💡 Real-time trading signals with click options
+  - ⚙️ User settings management
+  - 📊 Top 10 trending currencies tracking
+  - 🔄 Auto-signal notifications
 - **🌐 Web Dashboard**: Beautiful web interface showing live market data and signals
-- **📊 Market Data**: Real-time cryptocurrency price tracking
+- **📊 Market Data**: Real-time cryptocurrency price tracking for top 10 currencies
 - **💡 Trading Signals**: Automated signal generation with trend analysis
-- **🤖 Telegram Bot**: Remote control and notifications via Telegram
+- **📈 Reports**: Daily, Weekly, and Monthly crypto performance reports
+- **💾 User Storage**: Excel-based user settings and preferences storage
 - **🔒 Mock Mode**: Safe testing without real API credentials
 - **⚡ CLI Interface**: Easy command-line access to all features
 - **📱 Auto-refresh**: Web dashboard updates every 30 seconds
@@ -35,27 +47,35 @@ This project was originally configured for iOS development using the Briefcase/T
 ### Directory Structure
 ```
 .
-├── src/memo_bot_pro/           # Main application package
-│   ├── __init__.py             # Package initialization
-│   ├── config.py               # Configuration management
-│   ├── binance_client.py       # Binance API client (with mock mode)
-│   ├── signal_generator.py     # Trading signal generation
-│   ├── telegram_bot.py         # Telegram bot integration
-│   ├── web_app.py              # Flask web application
-│   └── cli.py                  # Command-line interface
-├── main.py                     # Application entry point
-├── pyproject.toml              # Project metadata and dependencies
-├── requirements.txt            # Python dependencies
-└── .gitignore                  # Git ignore rules
+├── src/memo_bot_pro/                # Main application package
+│   ├── __init__.py                  # Package initialization
+│   ├── config.py                    # Configuration management
+│   ├── binance_client.py            # Binance API client (with mock mode, top 10 currencies)
+│   ├── signal_generator.py          # Trading signal generation
+│   ├── telegram_bot.py              # Basic Telegram bot (legacy)
+│   ├── telegram_bot_enhanced.py     # Enhanced Telegram bot with EN/AR support
+│   ├── translations.py              # EN/AR language translations
+│   ├── user_storage.py              # Excel-based user settings storage
+│   ├── reports.py                   # Report generation (Daily/Weekly/Monthly)
+│   ├── web_app.py                   # Flask web application
+│   └── cli.py                       # Command-line interface
+├── main.py                          # Application entry point
+├── user_settings.xlsx               # User settings database (auto-created)
+├── pyproject.toml                   # Project metadata and dependencies
+├── requirements.txt                 # Python dependencies
+└── .gitignore                       # Git ignore rules
 ```
 
 ### Key Components
-1. **Web App**: Flask web dashboard with live market data visualization
-2. **Config Module**: Environment-based configuration with mock mode support
-3. **Binance Client**: Abstracts Binance API with mock implementation for testing
-4. **Signal Generator**: Analyzes price data and generates trading recommendations
-5. **Telegram Bot**: Provides remote access via Telegram commands
-6. **CLI**: Command-line interface for local interaction
+1. **Enhanced Telegram Bot**: Interactive bot with dual language (EN/AR) support, button menus, and user settings
+2. **Web App**: Flask web dashboard with live market data visualization
+3. **Config Module**: Environment-based configuration with mock mode support
+4. **Binance Client**: Abstracts Binance API with mock implementation for testing top 10 currencies
+5. **Signal Generator**: Analyzes price data and generates trading recommendations
+6. **User Storage**: Excel-based storage for user preferences and settings
+7. **Reports Generator**: Creates Daily, Weekly, and Monthly crypto performance reports
+8. **Translations**: Dual language support for English and Arabic
+9. **CLI**: Command-line interface for local interaction
 
 ## Usage
 
@@ -122,10 +142,11 @@ To enable live mode:
 ## Dependencies
 - **python-binance (1.0.19)**: Binance API wrapper
 - **requests (2.32.3)**: HTTP library
-- **python-telegram-bot (>=20.0)**: Telegram bot framework
+- **python-telegram-bot (>=20.0)**: Telegram bot framework with callback query support
 - **python-dotenv (>=1.0.0)**: Environment variable management
 - **flask (>=3.0.0)**: Web framework for dashboard
 - **gunicorn (>=23.0.0)**: Production WSGI server
+- **openpyxl (>=3.1.0)**: Excel file manipulation for user settings storage
 
 ## Deployment
 The application is configured for Autoscale deployment on Replit using Gunicorn as the production WSGI server. The deployment automatically:

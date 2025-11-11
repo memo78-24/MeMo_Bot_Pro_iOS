@@ -199,6 +199,27 @@ class EnhancedTelegramBot:
                 reply_markup=self._get_language_keyboard()
             )
 
+        elif data == 'settings_notif':
+            lang = self._get_user_lang(user_id)
+            settings = self.user_storage.get_user_settings(user_id)
+            auto_enabled = settings.get('auto_signals', False) if settings else False
+            
+            status = get_text(lang, 'auto_signals_on' if auto_enabled else 'auto_signals_off')
+            text = f"{get_text(lang, 'notifications_settings')}\n\n{get_text(lang, 'notifications_status')}: {status}"
+            
+            keyboard = [
+                [InlineKeyboardButton(
+                    get_text(lang, 'disable_notifications' if auto_enabled else 'enable_notifications'),
+                    callback_data='toggle_auto'
+                )],
+                [InlineKeyboardButton(get_text(lang, 'back'), callback_data='menu_settings')]
+            ]
+            
+            await query.edit_message_text(
+                text,
+                reply_markup=InlineKeyboardMarkup(keyboard)
+            )
+
     def _format_signals(self, signals, lang):
         text = f"<b>💡 {get_text(lang, 'signals')}</b>\n\n"
         
