@@ -1,5 +1,13 @@
 from datetime import datetime, timedelta
-from .translations import get_text
+from .translations import get_text, to_arabic_numerals
+
+
+# Arabic month names
+ARABIC_MONTHS = {
+    1: "يناير", 2: "فبراير", 3: "مارس", 4: "أبريل",
+    5: "مايو", 6: "يونيو", 7: "يوليو", 8: "أغسطس",
+    9: "سبتمبر", 10: "أكتوبر", 11: "نوفمبر", 12: "ديسمبر"
+}
 
 
 class ReportGenerator:
@@ -53,7 +61,7 @@ class ReportGenerator:
         for idx, curr in enumerate(currencies[:5], 1):
             report += f"\n{idx}. {curr['symbol']}: ${curr['price']}"
         
-        return report
+        return to_arabic_numerals(report, lang)
     
     def _generate_weekly_report(self, lang: str) -> str:
         today = datetime.now()
@@ -64,14 +72,14 @@ class ReportGenerator:
 📅 الفترة: {week_ago.strftime('%Y-%m-%d')} - {today.strftime('%Y-%m-%d')}
 
 <b>الملخص:</b>
-• تم تتبع 10 عملات رقمية
-• تم إنشاء 42 إشارة تداول
-• متوسط الثقة: 78%
+• تم تتبع ١٠ عملات رقمية
+• تم إنشاء ٤٢ إشارة تداول
+• متوسط الثقة: ٧٨٪
 
 <b>أداء السوق:</b>
-📈 اتجاه صاعد: 60%
-📉 اتجاه هابط: 25%
-➡️ اتجاه محايد: 15%
+📈 اتجاه صاعد: ٦٠٪
+📉 اتجاه هابط: ٢٥٪
+➡️ اتجاه محايد: ١٥٪
 """
         else:
             report = f"""<b>📈 Weekly Report</b>
@@ -88,25 +96,27 @@ class ReportGenerator:
 ➡️ Neutral: 15%
 """
         
-        return report
+        return to_arabic_numerals(report, lang)
     
     def _generate_monthly_report(self, lang: str) -> str:
         today = datetime.now()
-        month = today.strftime('%B %Y')
         
         if lang == 'ar':
+            month_name = ARABIC_MONTHS[today.month]
+            year = today.year
+            month = f"{month_name} {year}"
             report = f"""<b>📉 التقرير الشهري</b>
 📅 الشهر: {month}
 
 <b>الإحصائيات:</b>
-• إجمالي الإشارات: 180
-• إشارات ناجحة: 145 (80.5%)
-• متوسط العائد: +12.3%
+• إجمالي الإشارات: ١٨٠
+• إشارات ناجحة: ١٤٥ (٨٠٫٥٪)
+• متوسط العائد: +١٢٫٣٪
 
 <b>أفضل العملات أداءً:</b>
-🥇 BTC: +15.2%
-🥈 ETH: +18.7%
-🥉 SOL: +22.4%
+🥇 BTC: +١٥٫٢٪
+🥈 ETH: +١٨٫٧٪
+🥉 SOL: +٢٢٫٤٪
 
 <b>التوصيات:</b>
 ✅ استمر في تتبع BTC و ETH
@@ -114,6 +124,7 @@ class ReportGenerator:
 💡 فرص جيدة في SOL و BNB
 """
         else:
+            month = today.strftime('%B %Y')
             report = f"""<b>📉 Monthly Report</b>
 📅 Month: {month}
 
@@ -133,4 +144,4 @@ class ReportGenerator:
 💡 Good opportunities in SOL & BNB
 """
         
-        return report
+        return to_arabic_numerals(report, lang)

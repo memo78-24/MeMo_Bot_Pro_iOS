@@ -109,9 +109,8 @@ class EnhancedTelegramBot:
         # Show admin status if user is admin
         welcome_msg = get_text(lang, 'welcome')
         if self.is_admin(user_id):
-            admin_access_text = "Admin Access Granted" if lang == 'en' else "تم منح صلاحيات المشرف"
-            your_id_text = "Your ID:" if lang == 'en' else "معرّفك:"
-            welcome_msg += f"\n\n🔑 <b>{admin_access_text}</b>\n{your_id_text} <code>{to_arabic_numerals(user_id, lang)}</code>"
+            admin_msg = f"\n\n🔑 <b>{get_text(lang, 'admin_access_granted')}</b>\n{get_text(lang, 'your_id')} <code>{user_id}</code>"
+            welcome_msg += to_arabic_numerals(admin_msg, lang)
         
         await update.message.reply_text(
             welcome_msg,
@@ -215,9 +214,8 @@ class EnhancedTelegramBot:
 
         elif data == 'change_lang':
             lang = self._get_user_lang(user_id)
-            choose_lang_text = "Choose your language:" if lang == 'en' else "اختر لغتك:"
             await query.edit_message_text(
-                choose_lang_text,
+                get_text(lang, 'choose_language'),
                 reply_markup=self._get_language_keyboard()
             )
 
@@ -246,8 +244,7 @@ class EnhancedTelegramBot:
             # Admin-only: Toggle auto-notifications globally
             if not self.is_admin(user_id):
                 lang = self._get_user_lang(user_id)
-                admin_required_text = "❌ Admin access required" if lang == 'en' else "❌ صلاحيات المشرف مطلوبة"
-                await query.answer(admin_required_text, show_alert=True)
+                await query.answer(f"❌ {get_text(lang, 'admin_required')}", show_alert=True)
                 return
             
             self.auto_notifications_enabled = not self.auto_notifications_enabled
@@ -260,13 +257,11 @@ class EnhancedTelegramBot:
             # Admin-only: Send notifications immediately
             if not self.is_admin(user_id):
                 lang = self._get_user_lang(user_id)
-                admin_required_text = "❌ Admin access required" if lang == 'en' else "❌ صلاحيات المشرف مطلوبة"
-                await query.answer(admin_required_text, show_alert=True)
+                await query.answer(f"❌ {get_text(lang, 'admin_required')}", show_alert=True)
                 return
             
             lang = self._get_user_lang(user_id)
-            sending_text = "📤 Sending notifications..." if lang == 'en' else "📤 جاري إرسال الإشعارات..."
-            await query.answer(sending_text, show_alert=False)
+            await query.answer(f"📤 {get_text(lang, 'sending_notifications')}", show_alert=False)
             await self.send_auto_notifications()
             # Send confirmation via new message instead of second answer
             await query.message.reply_text(get_text(lang, 'auto_notif_sent'))
@@ -375,33 +370,20 @@ Support: support@memobotpro.com"""
         user = update.effective_user
         user_id = user.id
         lang = self._get_user_lang(user_id)
-        username = user.username or ("غير محدد" if lang == 'ar' else "Not set")
+        username = user.username or get_text(lang, 'not_set')
         
         is_admin = self.is_admin(user_id)
+        admin_status = f"🔑 <b>{get_text(lang, 'admin_label')}</b>" if is_admin else f"👤 {get_text(lang, 'regular_user')}"
         
-        if lang == 'ar':
-            admin_status = "🔑 <b>مشرف</b>" if is_admin else "👤 مستخدم عادي"
-            message = f"""
-<b>معلومات تليجرام الخاصة بك</b>
+        message = f"""
+<b>{get_text(lang, 'your_telegram_info')}</b>
 
-📋 <b>معرّف المستخدم:</b> <code>{user_id}</code>
-👤 <b>اسم المستخدم:</b> @{username}
-🎭 <b>الاسم:</b> {user.first_name}
-⚡ <b>الحالة:</b> {admin_status}
+📋 <b>{get_text(lang, 'user_id_label')}</b> <code>{user_id}</code>
+👤 <b>{get_text(lang, 'username_label')}</b> @{username}
+🎭 <b>{get_text(lang, 'name_label')}</b> {user.first_name}
+⚡ <b>{get_text(lang, 'status_label')}</b> {admin_status}
 
-<i>استخدم هذا المعرّف لتعيين نفسك كمشرف في متغير البيئة TELEGRAM_ADMIN_IDS.</i>
-"""
-        else:
-            admin_status = "🔑 <b>Admin</b>" if is_admin else "👤 Regular User"
-            message = f"""
-<b>Your Telegram Information</b>
-
-📋 <b>User ID:</b> <code>{user_id}</code>
-👤 <b>Username:</b> @{username}
-🎭 <b>Name:</b> {user.first_name}
-⚡ <b>Status:</b> {admin_status}
-
-<i>Use this ID to set yourself as admin in the TELEGRAM_ADMIN_IDS environment variable.</i>
+<i>{get_text(lang, 'myid_instruction')}</i>
 """
         
         message = to_arabic_numerals(message, lang)
@@ -414,10 +396,7 @@ Support: support@memobotpro.com"""
         
         # Check if user is admin
         if not self.is_admin(user_id):
-            if lang == 'ar':
-                access_denied_msg = "❌ <b>تم رفض الوصول</b>\n\nهذا الأمر متاح فقط لمشرفي البوت."
-            else:
-                access_denied_msg = "❌ <b>Access Denied</b>\n\nThis command is only available to bot administrators."
+            access_denied_msg = f"❌ <b>{get_text(lang, 'access_denied')}</b>\n\n{get_text(lang, 'access_denied_msg')}"
             await update.message.reply_text(access_denied_msg, parse_mode='HTML')
             return
         
@@ -436,62 +415,33 @@ Support: support@memobotpro.com"""
         # Count users with auto-signals enabled
         users_with_auto = len([u for u in all_users if u.get('auto_signals', False)])
         
-        # Build message based on language
-        if lang == 'ar':
-            enabled_text = f"✅ {get_text(lang, 'enabled')}"
-            disabled_text = f"❌ {get_text(lang, 'disabled')}"
-            connected_text = f"✅ {get_text(lang, 'connected')}"
-            not_configured_text = f"❌ {get_text(lang, 'not_configured')}"
-            
-            message = f"""
+        # Build message with translations
+        enabled_text = f"✅ {get_text(lang, 'enabled')}"
+        disabled_text = f"❌ {get_text(lang, 'disabled')}"
+        connected_text = f"✅ {get_text(lang, 'connected')}"
+        not_configured_text = f"❌ {get_text(lang, 'not_configured')}"
+        
+        message = f"""
 🔑 <b>{get_text(lang, 'admin_panel')}</b>
 
 📊 <b>{get_text(lang, 'bot_statistics')}</b>
-👥 {get_text(lang, 'total_users')}: {total_users}
-🔐 المشرفون: {admin_count}
-🇬🇧 المستخدمون الإنجليز: {lang_count['en']}
-🇸🇦 المستخدمون العرب: {lang_count['ar']}
+👥 {get_text(lang, 'total_users')} {total_users}
+🔐 {get_text(lang, 'admins')} {admin_count}
+🇬🇧 {get_text(lang, 'english_users')} {lang_count['en']}
+🇸🇦 {get_text(lang, 'arabic_users')} {lang_count['ar']}
 
 ⚙️ <b>{get_text(lang, 'configuration')}</b>
-🤖 {get_text(lang, 'mock_mode')}: {enabled_text if self.config.mock_mode else disabled_text}
-💱 {get_text(lang, 'binance_api')}: {connected_text if self.config.validate_binance() else not_configured_text}
+🤖 {get_text(lang, 'mock_mode')} {enabled_text if self.config.mock_mode else disabled_text}
+💱 {get_text(lang, 'binance_api')} {connected_text if self.config.validate_binance() else not_configured_text}
 
 🔔 <b>{get_text(lang, 'auto_notifications')}</b>
-📢 {get_text(lang, 'status')}: {enabled_text if self.auto_notifications_enabled else disabled_text}
-👥 {get_text(lang, 'subscribed')}: {users_with_auto}
-🔍 {get_text(lang, 'mode')}: {get_text(lang, 'realtime_price_mode')}
-⏱️ فترة الفحص: كل ٣٠ ثانية
-🛡️ فترة الانتظار: ٥ دقائق لكل عملة لكل مستخدم
+📢 {get_text(lang, 'status')} {enabled_text if self.auto_notifications_enabled else disabled_text}
+👥 {get_text(lang, 'subscribed')} {users_with_auto}
+🔍 {get_text(lang, 'mode')} {get_text(lang, 'realtime_price_mode')}
+⏱️ {get_text(lang, 'check_interval')} {get_text(lang, 'every_30_seconds')}
+🛡️ {get_text(lang, 'cooldown_label')} {get_text(lang, 'cooldown_value')}
 
-<i>نسخة البوت: ١٫٠٫٠</i>
-"""
-        else:
-            enabled_text = f"✅ {get_text(lang, 'enabled')}"
-            disabled_text = f"❌ {get_text(lang, 'disabled')}"
-            connected_text = f"✅ {get_text(lang, 'connected')}"
-            not_configured_text = f"❌ {get_text(lang, 'not_configured')}"
-            
-            message = f"""
-🔑 <b>{get_text(lang, 'admin_panel')}</b>
-
-📊 <b>{get_text(lang, 'bot_statistics')}</b>
-👥 {get_text(lang, 'total_users')}: {total_users}
-🔐 Admins: {admin_count}
-🇬🇧 English Users: {lang_count['en']}
-🇸🇦 Arabic Users: {lang_count['ar']}
-
-⚙️ <b>{get_text(lang, 'configuration')}</b>
-🤖 {get_text(lang, 'mock_mode')}: {enabled_text if self.config.mock_mode else disabled_text}
-💱 {get_text(lang, 'binance_api')}: {connected_text if self.config.validate_binance() else not_configured_text}
-
-🔔 <b>{get_text(lang, 'auto_notifications')}</b>
-📢 {get_text(lang, 'status')}: {enabled_text if self.auto_notifications_enabled else disabled_text}
-👥 {get_text(lang, 'subscribed')}: {users_with_auto}
-🔍 {get_text(lang, 'mode')}: {get_text(lang, 'realtime_price_mode')}
-⏱️ Check Interval: Every 30 seconds
-🛡️ Cooldown: 5 minutes per symbol per user
-
-<i>Bot Version: 1.0.0</i>
+<i>{get_text(lang, 'bot_version')} 1.0.0</i>
 """
         
         message = to_arabic_numerals(message, lang)
