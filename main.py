@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import sys
 import os
+import asyncio
 from src.memo_bot_pro.cli import CLI
 
 
@@ -27,13 +28,25 @@ def main():
     elif command == 'signals':
         cli.run_signals()
     elif command == 'telegram':
-        import asyncio
+        import nest_asyncio
         from src.memo_bot_pro.config import Config
         from src.memo_bot_pro.telegram_bot_enhanced import EnhancedTelegramBot
         
+        # Allow nested event loops
+        nest_asyncio.apply()
+        
         config = Config.from_env()
         bot = EnhancedTelegramBot(config)
-        asyncio.run(bot.run())
+        
+        try:
+            asyncio.run(bot.run())
+        except KeyboardInterrupt:
+            print("\n⚠️ Telegram bot stopped by user")
+        except Exception as e:
+            print(f"❌ Error running bot: {e}")
+            import traceback
+            traceback.print_exc()
+            sys.exit(1)
     elif command == 'help' or command == '--help' or command == '-h':
         cli.show_help()
     else:

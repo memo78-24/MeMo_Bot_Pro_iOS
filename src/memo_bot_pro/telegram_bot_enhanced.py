@@ -324,6 +324,7 @@ Support: support@memobotpro.com"""
             print("Please set the environment variable to enable the Telegram bot.")
             return
 
+        app = None
         try:
             app = Application.builder().token(self.config.telegram_bot_token).build()
 
@@ -340,5 +341,13 @@ Support: support@memobotpro.com"""
             
             await app.run_polling(allowed_updates=Update.ALL_TYPES)
 
+        except KeyboardInterrupt:
+            print("\n⚠️ Bot stopped by user")
         except Exception as e:
             print(f"❌ Error starting bot: {str(e)}")
+        finally:
+            if app and app.running:
+                try:
+                    await app.stop()
+                except:
+                    pass
