@@ -71,6 +71,27 @@ class UserStorage:
             print(f"Error saving user settings: {e}")
             return False
     
+    def get_all_users(self):
+        """Get all users from storage"""
+        users = []
+        try:
+            wb = openpyxl.load_workbook(self.file_path)
+            ws = wb['User Settings']
+            
+            for row in ws.iter_rows(min_row=2, values_only=True):
+                if row[0]:
+                    users.append({
+                        'user_id': row[0],
+                        'username': row[1],
+                        'language': row[2] or 'en',
+                        'auto_signals': row[3] == 'True',
+                        'timezone': row[4] or 'UTC'
+                    })
+        except Exception as e:
+            print(f"Error getting all users: {e}")
+        
+        return users
+    
     def get_all_users_with_auto_signals(self):
         users = []
         try:
