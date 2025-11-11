@@ -1,10 +1,44 @@
-from flask import Flask, render_template_string
+from flask import Flask, render_template_string, jsonify
 from .config import Config
 from .binance_client import BinanceClient
 from .signal_generator import SignalGenerator
 import time
+import os
 
 app = Flask(__name__)
+
+# Global client instances (lazy initialization)
+_client = None
+_signal_gen = None
+_last_error = None
+
+def get_or_create_client():
+    """Lazy initialization of Binance client with error handling"""
+    global _client, _signal_gen, _last_error
+    
+    if _client is None:
+        try:
+            config = Config.from_env()
+            
+            # Force mock mode in deployment if Binance API is unavailable
+            is_deployment = os.getenv('REPLIT_DEPLOYMENT') == '1'
+            mock_mode = config.mock_mode or is_deployment
+            
+            _client = BinanceClient(
+                api_key=config.binance_api_key,
+                api_secret=config.binance_api_secret,
+                mock=mock_mode
+            )
+            _signal_gen = SignalGenerator(_client)
+            _last_error = None
+        except Exception as e:
+            _last_error = str(e)
+            # Fallback to mock mode on error
+            config = Config.from_env()
+            _client = BinanceClient(mock=True)
+            _signal_gen = SignalGenerator(_client)
+    
+    return _client, _signal_gen
 
 HTML_TEMPLATE = '''
 <!DOCTYPE html>
@@ -283,52 +317,77 @@ HTML_TEMPLATE = '''
 </html>
 '''
 
-@app.route('/')
 @app.route('/health')
+def health():
+    """Lightweight health check endpoint for deployment"""
+    return jsonify({
+        'status': 'healthy',
+        'service': 'MeMo Bot Pro',
+        'version': '1.0.0'
+    }), 200
+
+@app.route('/')
 def index():
-    config = Config.from_env()
-    client = BinanceClient(
-        api_key=config.binance_api_key,
-        api_secret=config.binance_api_secret,
-        mock=config.mock_mode
-    )
-    signal_gen = SignalGenerator(client)
-    
-    prices = client.get_all_prices()
-    summary = client.get_market_summary()
-    signals = signal_gen.generate_signals(['BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'SOLUSDT'])
-    
-    update_time = time.strftime('%Y-%m-%d %H:%M:%S UTC', time.gmtime())
-    
-    return render_template_string(
-        HTML_TEMPLATE,
-        mock_mode=config.mock_mode,
-        prices=prices[:5],
-        summary=summary,
-        signals=signals,
-        update_time=update_time
-    )
+    """Main dashboard with graceful error handling"""
+    try:
+        client, signal_gen = get_or_create_client()
+        config = Config.from_env()
+        
+        # Force mock mode in deployment
+        is_deployment = os.getenv('REPLIT_DEPLOYMENT') == '1'
+        mock_mode = config.mock_mode or is_deployment
+        
+        # Wrap API calls in try-except
+        try:
+            prices = client.get_all_prices()
+            summary = client.get_market_summary()
+            signals = signal_gen.generate_signals(['BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'SOLUSDT'])
+        except Exception as e:
+            # Return error page with helpful message
+            return render_template_string('''
+                <!DOCTYPE html>
+                <html><head><title>MeMo Bot Pro - Service Unavailable</title></head>
+                <body style="font-family: sans-serif; padding: 50px; text-align: center;">
+                    <h1>🔄 MeMo Bot Pro</h1>
+                    <p>Service temporarily unavailable from this location.</p>
+                    <p><strong>Error:</strong> {{ error }}</p>
+                    <p>The Binance API may be restricted in this region.</p>
+                    <p>Please try enabling MOCK_MODE in your environment variables.</p>
+                    <hr>
+                    <p><small>For support: support@memobotpro.com</small></p>
+                </body></html>
+            ''', error=str(e)), 503
+        
+        update_time = time.strftime('%Y-%m-%d %H:%M:%S UTC', time.gmtime())
+        
+        return render_template_string(
+            HTML_TEMPLATE,
+            mock_mode=mock_mode,
+            prices=prices[:5],
+            summary=summary,
+            signals=signals,
+            update_time=update_time
+        )
+    except Exception as e:
+        return jsonify({'error': str(e), 'status': 'error'}), 500
 
 @app.route('/api/prices')
 def api_prices():
-    config = Config.from_env()
-    client = BinanceClient(
-        api_key=config.binance_api_key,
-        api_secret=config.binance_api_secret,
-        mock=config.mock_mode
-    )
-    return {'prices': client.get_all_prices()}
+    """API endpoint for prices with error handling"""
+    try:
+        client, _ = get_or_create_client()
+        return jsonify({'prices': client.get_all_prices()})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 503
 
 @app.route('/api/signals')
 def api_signals():
-    config = Config.from_env()
-    client = BinanceClient(
-        api_key=config.binance_api_key,
-        api_secret=config.binance_api_secret,
-        mock=config.mock_mode
-    )
-    signal_gen = SignalGenerator(client)
-    return {'signals': signal_gen.generate_signals()}
+    """API endpoint for signals with error handling"""
+    try:
+        _, signal_gen = get_or_create_client()
+        return jsonify({'signals': signal_gen.generate_signals()})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 503
 
 def run_web_server(host='0.0.0.0', port=5000):
     print(f"🚀 MeMo Bot Pro Web Server starting on {host}:{port}")

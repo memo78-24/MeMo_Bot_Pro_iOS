@@ -48,7 +48,10 @@ class BinanceClient:
             self.client = MockBinanceClient()
         else:
             if not api_key or not api_secret:
-                raise ValueError("API key and secret required for live mode")
+                print("Warning: API credentials not provided. Using mock mode.")
+                self.client = MockBinanceClient()
+                self.mock = True
+                return
             try:
                 from binance.client import Client
                 self.client = Client(api_key, api_secret)
@@ -56,22 +59,34 @@ class BinanceClient:
                 print("Warning: python-binance not installed. Using mock mode.")
                 self.client = MockBinanceClient()
                 self.mock = True
+            except Exception as e:
+                print(f"Warning: Failed to initialize Binance client: {e}. Using mock mode.")
+                self.client = MockBinanceClient()
+                self.mock = True
 
     def get_price(self, symbol: str = 'BTCUSDT') -> Dict:
         if self.mock:
             return self.client.get_ticker_price(symbol=symbol)
         else:
-            result = self.client.get_symbol_ticker(symbol=symbol)
-            return result
+            try:
+                result = self.client.get_symbol_ticker(symbol=symbol)
+                return result
+            except Exception as e:
+                print(f"Error fetching price for {symbol}: {e}")
+                raise
 
     def get_all_prices(self) -> List[Dict]:
         if self.mock:
             return self.client.get_all_tickers()
         else:
-            tickers = self.client.get_all_tickers()
-            top_10_symbols = ['BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'SOLUSDT', 'XRPUSDT', 
-                            'ADAUSDT', 'DOGEUSDT', 'DOTUSDT', 'MATICUSDT', 'LTCUSDT']
-            return [t for t in tickers if t['symbol'] in top_10_symbols][:10]
+            try:
+                tickers = self.client.get_all_tickers()
+                top_10_symbols = ['BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'SOLUSDT', 'XRPUSDT', 
+                                'ADAUSDT', 'DOGEUSDT', 'DOTUSDT', 'MATICUSDT', 'LTCUSDT']
+                return [t for t in tickers if t['symbol'] in top_10_symbols][:10]
+            except Exception as e:
+                print(f"Error fetching all prices: {e}")
+                raise
 
     def get_account_info(self) -> Dict:
         if self.mock:

@@ -149,13 +149,34 @@ To enable live mode:
 - **openpyxl (>=3.1.0)**: Excel file manipulation for user settings storage
 
 ## Deployment
-The application is configured for Autoscale deployment on Replit using Gunicorn as the production WSGI server. The deployment automatically:
+The application is configured for Autoscale deployment on Replit using Gunicorn as the production WSGI server.
+
+### Deployment Features
+- **Lightweight Health Checks**: Fast `/health` endpoint returns immediately without expensive API calls
+- **Automatic Mock Mode**: Automatically enables mock mode in deployment to bypass geographic restrictions
+- **Graceful Error Handling**: Falls back to mock mode if Binance API is unavailable
+- **Lazy Initialization**: Client instances created only when needed
+- **Production WSGI**: Uses Gunicorn with 2 workers for stability
+
+### Deployment Configuration
+The deployment automatically:
 - Binds to port 5000
 - Serves the web dashboard
-- Responds to health checks
+- Responds to health checks at `/health`
 - Scales based on traffic
+- Detects deployment environment via `REPLIT_DEPLOYMENT` variable
 
-To publish your deployment, click the "Publish" button in Replit.
+### Publishing
+To publish your deployment:
+1. Click the "Publish" button in Replit
+2. The app will automatically use mock mode in deployment
+3. Health checks will pass immediately
+4. Dashboard will be accessible via public URL
+
+### Development vs Production
+- **Development**: Uses your Binance API keys if `MOCK_MODE=false`
+- **Production/Deployment**: Automatically uses mock mode for reliability
+- To enable live Binance in deployment, ensure your deployment region supports Binance API
 
 ## Development Notes
 - Built for Python 3.11+
