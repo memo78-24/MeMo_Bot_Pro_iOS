@@ -329,13 +329,50 @@ def health():
 @app.route('/')
 def index():
     """Main dashboard with graceful error handling"""
+    # Check if this is a deployment environment FIRST
+    is_deployment = os.getenv('REPLIT_DEPLOYMENT') == '1'
+    
+    # In deployment, use simplified mock mode view
+    if is_deployment:
+        try:
+            # Force mock mode - never try live Binance in deployment
+            from .binance_client import BinanceClient
+            from .signal_generator import SignalGenerator
+            
+            client = BinanceClient(mock=True)
+            signal_gen = SignalGenerator(client)
+            
+            prices = client.get_all_prices()
+            summary = client.get_market_summary()
+            signals = signal_gen.generate_signals(['BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'SOLUSDT'])
+            
+            update_time = time.strftime('%Y-%m-%d %H:%M:%S UTC', time.gmtime())
+            
+            return render_template_string(
+                HTML_TEMPLATE,
+                mock_mode=True,
+                prices=prices[:5],
+                summary=summary,
+                signals=signals,
+                update_time=update_time
+            )
+        except Exception as e:
+            # Even in mock mode if something fails, return simple status page
+            return render_template_string('''
+                <!DOCTYPE html>
+                <html><head><title>MeMo Bot Pro</title></head>
+                <body style="font-family: sans-serif; padding: 50px; text-align: center;">
+                    <h1>🤖 MeMo Bot Pro</h1>
+                    <p>✅ Service is running</p>
+                    <p>Arabic Crypto Trading Assistant</p>
+                    <p><small>Version 1.0.0</small></p>
+                </body></html>
+            '''), 200
+    
+    # Development/local mode - try to use configured settings
     try:
         client, signal_gen = get_or_create_client()
         config = Config.from_env()
-        
-        # Force mock mode in deployment
-        is_deployment = os.getenv('REPLIT_DEPLOYMENT') == '1'
-        mock_mode = config.mock_mode or is_deployment
         
         # Wrap API calls in try-except
         try:
@@ -362,7 +399,7 @@ def index():
         
         return render_template_string(
             HTML_TEMPLATE,
-            mock_mode=mock_mode,
+            mock_mode=config.mock_mode,
             prices=prices[:5],
             summary=summary,
             signals=signals,
