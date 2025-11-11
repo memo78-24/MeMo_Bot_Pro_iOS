@@ -46,11 +46,38 @@ TRANSLATIONS = {
         'auto_notification_header': "Automatic Trading Signals",
         'up': "UP",
         'down': "DOWN",
+        'your_user_id': "Your user ID is:",
+        'admin_panel': "Admin Panel",
+        'bot_statistics': "Bot Statistics:",
+        'total_users': "Total Users:",
+        'subscribed_users': "Subscribed Users:",
+        'configuration': "Configuration:",
+        'mock_mode': "Mock Mode:",
+        'enabled': "Enabled",
+        'disabled': "Disabled",
+        'binance_api': "Binance API:",
+        'connected': "Connected",
+        'not_configured': "Not configured",
+        'auto_notifications': "Auto-Notifications:",
+        'status': "Status:",
+        'subscribed': "Subscribed:",
+        'mode': "Mode:",
+        'realtime_price_mode': "Real-time Price Changes (1%+ threshold)",
+        'disable_notif_btn': "Disable Notifications",
+        'enable_notif_btn': "Enable Notifications",
+        'send_now_btn': "Send Now",
+        'price_change_alert': "Price Change Alert!",
+        'previous_price': "Previous Price:",
+        'current_price': "Current Price:",
+        'change': "Change:",
+        'realtime_update': "Real-time automatic update",
+        'auto_notif_sent': "Auto-notifications sent successfully!",
+        'auto_notif_toggled': "Auto-notifications",
     },
     'ar': {
         'welcome': "👋 مرحباً بك في ميمو بوت برو!\n\n"
                    "🤖 مساعدك الذكي للتداول في العملات الرقمية.\n\n"
-                   "أقدم لك إشارات فورية لأفضل 10 عملات رقمية رائجة.\n\n"
+                   "أقدم لك إشارات فورية لأفضل ١٠ عملات رقمية رائجة.\n\n"
                    "اختر لغتك للمتابعة:",
         'main_menu': "📊 القائمة الرئيسية\n\nماذا تريد أن تفعل؟",
         'signals': "💡 إشارات التداول",
@@ -61,7 +88,7 @@ TRANSLATIONS = {
         'language': "🌐 اللغة",
         'english': "🇬🇧 الإنجليزية",
         'arabic': "🇸🇦 العربية",
-        'top_10_currencies': "📊 أفضل 10 عملات رائجة",
+        'top_10_currencies': "📊 أفضل ١٠ عملات رائجة",
         'get_signals': "🔔 احصل على آخر الإشارات",
         'auto_signals': "🔄 الإشارات التلقائية",
         'daily_report': "📊 التقرير اليومي",
@@ -94,8 +121,53 @@ TRANSLATIONS = {
         'auto_notification_header': "إشارات التداول التلقائية",
         'up': "صعود",
         'down': "هبوط",
+        'your_user_id': "معرّف المستخدم الخاص بك:",
+        'admin_panel': "لوحة التحكم",
+        'bot_statistics': "إحصائيات البوت:",
+        'total_users': "إجمالي المستخدمين:",
+        'subscribed_users': "المشتركون:",
+        'configuration': "الإعدادات:",
+        'mock_mode': "الوضع التجريبي:",
+        'enabled': "مفعّل",
+        'disabled': "متوقف",
+        'binance_api': "واجهة باينانس:",
+        'connected': "متصل",
+        'not_configured': "غير مهيأ",
+        'auto_notifications': "الإشعارات التلقائية:",
+        'status': "الحالة:",
+        'subscribed': "المشتركون:",
+        'mode': "الوضع:",
+        'realtime_price_mode': "تغييرات السعر الفورية (حد ١٪+)",
+        'disable_notif_btn': "🔕 إيقاف الإشعارات",
+        'enable_notif_btn': "🔔 تفعيل الإشعارات",
+        'send_now_btn': "📤 إرسال الآن",
+        'price_change_alert': "تنبيه تغيير السعر!",
+        'previous_price': "السعر السابق:",
+        'current_price': "السعر الحالي:",
+        'change': "التغيير:",
+        'realtime_update': "تحديث تلقائي فوري",
+        'auto_notif_sent': "✅ تم إرسال الإشعارات التلقائية بنجاح!",
+        'auto_notif_toggled': "الإشعارات التلقائية",
     }
 }
+
+def to_arabic_numerals(text, lang='en'):
+    """Convert Western numerals (0-9) to Arabic-Indic numerals (٠-٩) for Arabic language"""
+    if lang != 'ar':
+        return text
+    
+    # Mapping of Western to Arabic-Indic numerals
+    arabic_numerals = {
+        '0': '٠', '1': '١', '2': '٢', '3': '٣', '4': '٤',
+        '5': '٥', '6': '٦', '7': '٧', '8': '٨', '9': '٩',
+        '.': '٫',  # Arabic decimal separator
+        ',': '٬',  # Arabic thousands separator
+    }
+    
+    result = str(text)
+    for western, arabic in arabic_numerals.items():
+        result = result.replace(western, arabic)
+    return result
 
 def get_text(lang, key):
     return TRANSLATIONS.get(lang, TRANSLATIONS['en']).get(key, key)
