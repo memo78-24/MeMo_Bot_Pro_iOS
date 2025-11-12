@@ -9,3 +9,4 @@ nest-asyncio
 APScheduler
 psutil
 reportlab
+psycopg2-binary

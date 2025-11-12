@@ -34,9 +34,11 @@ class EnhancedTelegramBot:
         self.scheduler = AsyncIOScheduler()
         self.app = None
         self.auto_notifications_enabled = True
-        self.previous_prices = {}  # Track previous prices for change detection
-        self.last_notification_time = {}  # Track last notification per symbol per user
+        self.previous_prices = {}  # No longer used but kept for compatibility
+        self.last_notification_time = {}  # No longer used but kept for compatibility
         self.price_monitor_running = False
+        self.cached_market_data = None  # Cache for minute-level broadcasts
+        self.last_cache_time = None
     
     def is_admin(self, user_id: int) -> bool:
         """Check if a user is an admin"""
@@ -45,6 +47,13 @@ class EnhancedTelegramBot:
     def _get_user_lang(self, user_id: int) -> str:
         settings = self.user_storage.get_user_settings(user_id)
         return settings['language'] if settings else 'en'
+    
+    def _track_user_activity(self, user_id: int):
+        """Track user activity timestamp"""
+        try:
+            self.user_storage.update_last_activity(user_id)
+        except Exception as e:
+            print(f"Error tracking activity for user {user_id}: {e}")
 
     def _get_language_keyboard(self):
         # Show language names in their native form
@@ -98,6 +107,8 @@ class EnhancedTelegramBot:
     async def start_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         user = update.effective_user
         user_id = user.id
+        self._track_user_activity(user_id)
+        
         lang_temp = 'en'  # Default for fallback username
         settings = self.user_storage.get_user_settings(user_id)
         if settings:
@@ -124,6 +135,7 @@ class EnhancedTelegramBot:
 
     async def menu_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         user_id = update.effective_user.id
+        self._track_user_activity(user_id)
         lang = self._get_user_lang(user_id)
         
         await update.message.reply_text(
@@ -136,6 +148,7 @@ class EnhancedTelegramBot:
         await query.answer()
         
         user_id = update.effective_user.id
+        self._track_user_activity(user_id)
         lang_temp = self._get_user_lang(user_id) or 'en'
         username = update.effective_user.username or update.effective_user.first_name or get_text(lang_temp, 'fallback_username')
         data = query.data
@@ -308,15 +321,17 @@ class EnhancedTelegramBot:
 
     async def signals_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         user_id = update.effective_user.id
+        self._track_user_activity(user_id)
         lang = self._get_user_lang(user_id)
         
         signals = self.signal_generator.generate_signals()
         signals_text = self._format_signals(signals, lang)
         
-        await update.message.reply_text(signals_text, parse_mode='HTML')
+        await update.message.reply_text(signals_text, parse_mode='HTML', reply_markup=self._get_main_menu_keyboard(lang))
 
     async def reports_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         user_id = update.effective_user.id
+        self._track_user_activity(user_id)
         lang = self._get_user_lang(user_id)
         
         await update.message.reply_text(
@@ -326,6 +341,7 @@ class EnhancedTelegramBot:
 
     async def settings_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         user_id = update.effective_user.id
+        self._track_user_activity(user_id)
         lang = self._get_user_lang(user_id)
         
         await update.message.reply_text(
@@ -337,6 +353,7 @@ class EnhancedTelegramBot:
         """Show user their Telegram ID"""
         user = update.effective_user
         user_id = user.id
+        self._track_user_activity(user_id)
         lang = self._get_user_lang(user_id)
         username = user.username or get_text(lang, 'not_set')
         
@@ -355,11 +372,63 @@ class EnhancedTelegramBot:
 """
         
         message = to_arabic_numerals(message, lang)
-        await update.message.reply_text(message, parse_mode='HTML')
+        await update.message.reply_text(message, parse_mode='HTML', reply_markup=self._get_main_menu_keyboard(lang))
+    
+    async def broadcast_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Admin-only command to broadcast message to all users"""
+        user_id = update.effective_user.id
+        self._track_user_activity(user_id)
+        lang = self._get_user_lang(user_id)
+        
+        # Check admin permission
+        if not self.is_admin(user_id):
+            await update.message.reply_text(f"❌ {get_text(lang, 'admin_required')}", parse_mode='HTML')
+            return
+        
+        # Get broadcast message from command
+        if not context.args:
+            help_msg = get_text(lang, 'broadcast_help')
+            await update.message.reply_text(help_msg, parse_mode='HTML')
+            return
+        
+        broadcast_text = ' '.join(context.args)
+        
+        # Get all users
+        all_users = self.user_storage.get_all_users()
+        sent_count = 0
+        failed_count = 0
+        
+        # Send to all users
+        for user in all_users:
+            try:
+                target_user_id = user['user_id']
+                target_lang = user.get('language', 'en')
+                
+                # Add admin signature
+                final_message = f"📢 <b>{get_text(target_lang, 'broadcast_from_admin')}</b>\n\n{broadcast_text}"
+                
+                await self.app.bot.send_message(
+                    chat_id=target_user_id,
+                    text=final_message,
+                    parse_mode='HTML',
+                    reply_markup=self._get_main_menu_keyboard(target_lang)
+                )
+                
+                sent_count += 1
+                await asyncio.sleep(0.05)  # Rate limiting
+                
+            except Exception as e:
+                print(f"❌ Error broadcasting to user {target_user_id}: {e}")
+                failed_count += 1
+        
+        # Send confirmation to admin
+        result_msg = f"✅ {get_text(lang, 'broadcast_sent')}: {sent_count}\n❌ {get_text(lang, 'broadcast_failed')}: {failed_count}"
+        await update.message.reply_text(result_msg, parse_mode='HTML')
     
     async def admin_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Admin-only command to view bot statistics"""
         user_id = update.effective_user.id
+        self._track_user_activity(user_id)
         lang = self._get_user_lang(user_id)
         
         # Check if user is admin
@@ -424,110 +493,118 @@ class EnhancedTelegramBot:
         await update.message.reply_text(message, parse_mode='HTML', reply_markup=InlineKeyboardMarkup(keyboard))
     
     async def monitor_price_changes(self):
-        """Continuously monitor prices and send notifications on significant changes"""
-        print("🔍 Price monitoring started - checking every 30 seconds")
+        """Send price updates every 60 seconds to all subscribed users"""
+        print("🔍 Price monitoring started - sending updates every 60 seconds")
         self.price_monitor_running = True
         
         while self.price_monitor_running:
             try:
                 if not self.auto_notifications_enabled or not self.app:
-                    await asyncio.sleep(30)
+                    await asyncio.sleep(60)
                     continue
-                
-                # Get current prices from top 10
-                current_data = self.binance_client.get_top_10_currencies()
                 
                 # Get subscribed users
                 users = self.user_storage.get_all_users_with_auto_signals()
                 
                 if not users:
-                    await asyncio.sleep(30)
+                    await asyncio.sleep(60)
                     continue
                 
-                # Check each symbol for price changes
-                for symbol_data in current_data:
-                    symbol = symbol_data['symbol']
-                    current_price = float(symbol_data['price'])
-                    
-                    # Initialize previous price if first time
-                    if symbol not in self.previous_prices:
-                        self.previous_prices[symbol] = current_price
-                        continue
-                    
-                    previous_price = self.previous_prices[symbol]
-                    
-                    # Calculate percentage change
-                    if previous_price > 0:
-                        change_percent = ((current_price - previous_price) / previous_price) * 100
-                    else:
-                        continue
-                    
-                    # Check if change is significant (threshold: 1%)
-                    if abs(change_percent) >= 1.0:
-                        # Send notification to all subscribed users
-                        await self._send_price_change_alerts(symbol, current_price, previous_price, change_percent, users)
-                        
-                        # Update previous price after notification
-                        self.previous_prices[symbol] = current_price
+                # Fetch market data once per cycle (cache for efficiency)
+                current_time = datetime.now()
+                if not self.last_cache_time or (current_time - self.last_cache_time).total_seconds() >= 55:
+                    self.cached_market_data = self.binance_client.get_top_10_currencies()
+                    self.last_cache_time = current_time
                 
-                await asyncio.sleep(30)  # Check every 30 seconds
+                if not self.cached_market_data:
+                    await asyncio.sleep(60)
+                    continue
+                
+                # Send updates to all subscribed users
+                await self._send_minute_updates(self.cached_market_data, users)
+                
+                await asyncio.sleep(60)  # Send every 60 seconds
                 
             except Exception as e:
                 print(f"❌ Error in price monitoring: {e}")
-                await asyncio.sleep(30)
+                await asyncio.sleep(60)
     
-    async def _send_price_change_alerts(self, symbol, current_price, previous_price, change_percent, users):
-        """Send price change alert to subscribed users"""
+    async def _send_minute_updates(self, market_data, users):
+        """Send minute-level price updates to all subscribed users"""
         sent_count = 0
-        current_time = datetime.now()
         
         for user in users:
             try:
                 user_id = user['user_id']
                 lang = user.get('language', 'en')
                 
-                # Check cooldown (5 minutes per symbol per user)
-                cooldown_key = f"{user_id}_{symbol}"
-                if cooldown_key in self.last_notification_time:
-                    time_since_last = (current_time - self.last_notification_time[cooldown_key]).total_seconds()
-                    if time_since_last < 300:  # 5 minutes cooldown
-                        continue
+                # Create update message with all top 10
+                message = f"📊 <b>{get_text(lang, 'price_update')}</b>\n\n"
                 
-                # Determine direction
-                direction = "📈" if change_percent > 0 else "📉"
-                direction_text = get_text(lang, 'up') if change_percent > 0 else get_text(lang, 'down')
+                for idx, symbol_data in enumerate(market_data, 1):
+                    symbol = symbol_data['symbol']
+                    price = float(symbol_data['price'])
+                    message += f"{idx}. <b>{symbol}</b>: ${price:.2f}\n"
                 
-                # Create alert message
-                message = f"""
-🚨 <b>{get_text(lang, 'price_change_alert')}</b>
-
-{direction} <b>{symbol}</b>
-💰 {get_text(lang, 'previous_price')}: ${previous_price:.2f}
-💰 {get_text(lang, 'current_price')}: ${current_price:.2f}
-📊 {get_text(lang, 'change')}: {change_percent:+.2f}% {direction_text}
-
-<i>{get_text(lang, 'realtime_update')}</i>
-"""
+                message += f"\n<i>{get_text(lang, 'minute_update')}</i>"
                 
                 # Convert numbers to Arabic numerals for Arabic users
                 message = to_arabic_numerals(message, lang)
                 
+                # Send with main menu attached for persistence
                 await self.app.bot.send_message(
                     chat_id=user_id,
                     text=message,
-                    parse_mode='HTML'
+                    parse_mode='HTML',
+                    reply_markup=self._get_main_menu_keyboard(lang)
                 )
                 
-                # Update last notification time
-                self.last_notification_time[cooldown_key] = current_time
                 sent_count += 1
-                await asyncio.sleep(0.3)  # Rate limiting
+                await asyncio.sleep(0.05)  # Rate limiting (20 msgs/sec)
                 
             except Exception as e:
-                print(f"❌ Error sending price alert to user {user_id}: {e}")
+                print(f"❌ Error sending minute update to user {user_id}: {e}")
         
         if sent_count > 0:
-            print(f"📢 Price alert sent: {symbol} {change_percent:+.2f}% to {sent_count} users")
+            print(f"📢 Minute update sent to {sent_count} users")
+    
+    async def check_inactive_users(self):
+        """Check for inactive users and send welcome messages"""
+        try:
+            if not self.app:
+                return
+                
+            inactive_users = self.user_storage.get_inactive_users(hours=1)
+            
+            if not inactive_users:
+                return
+            
+            for user in inactive_users:
+                try:
+                    user_id = user['user_id']
+                    lang = user.get('language', 'en')
+                    
+                    # Send welcome back message with main menu
+                    message = get_text(lang, 'welcome_back')
+                    
+                    await self.app.bot.send_message(
+                        chat_id=user_id,
+                        text=message,
+                        parse_mode='HTML',
+                        reply_markup=self._get_main_menu_keyboard(lang)
+                    )
+                    
+                    # Update last welcome timestamp
+                    self.user_storage.update_last_welcome(user_id)
+                    
+                    print(f"📬 Welcome message sent to inactive user {user_id}")
+                    await asyncio.sleep(0.3)
+                    
+                except Exception as e:
+                    print(f"❌ Error sending welcome to user {user_id}: {e}")
+                    
+        except Exception as e:
+            print(f"❌ Error checking inactive users: {e}")
 
     async def run(self):
         if not self.config.validate_telegram():
@@ -546,14 +623,26 @@ class EnhancedTelegramBot:
             self.app.add_handler(CommandHandler("settings", self.settings_command))
             self.app.add_handler(CommandHandler("myid", self.myid_command))
             self.app.add_handler(CommandHandler("admin", self.admin_command))
+            self.app.add_handler(CommandHandler("broadcast", self.broadcast_command))
             self.app.add_handler(CallbackQueryHandler(self.button_callback))
 
+            # Start scheduler for inactive user checks (every 10 minutes)
+            self.scheduler.add_job(
+                self.check_inactive_users,
+                'interval',
+                minutes=10,
+                id='inactive_user_check'
+            )
+            self.scheduler.start()
+            
             # Start price monitoring task
             price_monitor_task = asyncio.create_task(self.monitor_price_changes())
             
             print("🚀 MeMo Bot Pro Enhanced Telegram Bot is running...")
             print("✅ Features: EN/AR support, Interactive menus, Auto signals, Reports")
-            print("🔔 Price Change Alerts: Enabled (1%+ threshold, 30s checks)")
+            print("🔔 Minute Updates: Enabled (every 60 seconds, no threshold)")
+            print("👋 Welcome Messages: Checking inactive users every 10 minutes")
+            print("📢 Admin Broadcast: /broadcast command available")
             print("Press Ctrl+C to stop")
             
             await self.app.run_polling(allowed_updates=Update.ALL_TYPES)

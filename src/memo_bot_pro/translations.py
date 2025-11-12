@@ -125,6 +125,15 @@ Support: support@memobotpro.com""",
         # Language selector buttons (always show in native form)
         'lang_button_en': "🇬🇧 English",
         'lang_button_ar': "🇸🇦 العربية",
+        
+        # New features
+        'price_update': "Price Update",
+        'minute_update': "Minute-level update",
+        'welcome_back': "👋 Welcome back! We missed you!\n\nHere's your main menu:",
+        'broadcast_help': "📢 <b>Broadcast Command</b>\n\nUsage: /broadcast <message>\n\nSends a message to all bot users.",
+        'broadcast_from_admin': "Admin Broadcast",
+        'broadcast_sent': "Sent",
+        'broadcast_failed': "Failed",
     },
     'ar': {
         'welcome': "👋 مرحباً بك في ميمو بوت برو!\n\n"
@@ -252,6 +261,15 @@ Support: support@memobotpro.com""",
         # Language selector buttons (always show in native form)
         'lang_button_en': "🇬🇧 English",
         'lang_button_ar': "🇸🇦 العربية",
+        
+        # New features
+        'price_update': "تحديث الأسعار",
+        'minute_update': "تحديث كل دقيقة",
+        'welcome_back': "👋 مرحباً بعودتك! افتقدناك!\n\nإليك القائمة الرئيسية:",
+        'broadcast_help': "📢 <b>أمر البث</b>\n\nالاستخدام: /broadcast <رسالة>\n\nيرسل رسالة لجميع مستخدمي البوت.",
+        'broadcast_from_admin': "بث من المشرف",
+        'broadcast_sent': "تم الإرسال",
+        'broadcast_failed': "فشل",
     }
 }
 
