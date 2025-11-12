@@ -34,25 +34,35 @@ class ProfitCalculator:
     
     def calculate_profit_per_currency(self, symbol: str) -> Dict:
         """Calculate profit for a single currency"""
-        if symbol not in self.price_history or len(self.price_history[symbol]) < 2:
-            return {
-                'symbol': symbol,
-                'investment_aed': 0.0,
-                'current_value_aed': 0.0,
-                'profit_aed': 0.0,
-                'profit_percent': 0.0,
-                'trades': 0
-            }
-        
         # Investment split equally across 10 currencies
         investment_per_currency_aed = self.initial_investment_aed / 10
+        
+        if symbol not in self.price_history or len(self.price_history[symbol]) < 1:
+            # No price data yet - show investment but no change
+            return {
+                'symbol': symbol,
+                'investment_aed': investment_per_currency_aed,
+                'current_value_aed': investment_per_currency_aed,
+                'profit_aed': 0.0,
+                'profit_percent': 0.0,
+                'trades': 0,
+                'first_price': 0.0,
+                'last_price': 0.0
+            }
         
         # Get first and last prices
         first_price = self.price_history[symbol][0][0]
         last_price = self.price_history[symbol][-1][0]
         
-        # Calculate profit/loss
-        price_change_percent = ((last_price - first_price) / first_price) * 100
+        # Calculate profit/loss (even with just 1 price point, we can track changes)
+        if len(self.price_history[symbol]) >= 2:
+            price_change_percent = ((last_price - first_price) / first_price) * 100 if first_price != 0 else 0
+            trades = len(self.price_history[symbol]) - 1
+        else:
+            # Only 1 price point - no change yet
+            price_change_percent = 0.0
+            trades = 0
+        
         profit_aed = investment_per_currency_aed * (price_change_percent / 100)
         current_value_aed = investment_per_currency_aed + profit_aed
         
@@ -62,7 +72,7 @@ class ProfitCalculator:
             'current_value_aed': current_value_aed,
             'profit_aed': profit_aed,
             'profit_percent': price_change_percent,
-            'trades': len(self.price_history[symbol]) - 1,
+            'trades': trades,
             'first_price': first_price,
             'last_price': last_price
         }
@@ -156,7 +166,9 @@ class ProfitCalculator:
         for i, curr in enumerate(sorted_currencies[:3], 1):
             emoji = "🟢" if curr['profit_aed'] >= 0 else "🔴"
             short_name = curr['symbol'].replace('USDT', '')
-            report += f"\n{i}. {short_name}: {emoji} {curr['profit_aed']:+.2f} AED ({curr['profit_percent']:+.2f}%)"
+            profit_val = curr['profit_aed']
+            profit_pct = curr['profit_percent']
+            report += f"\n{i}. {short_name}: {emoji} {profit_val:+.2f} AED ({profit_pct:+.2f}%)"
         
         return report
     
@@ -170,22 +182,33 @@ class ProfitCalculator:
             arabic_digits = '٠١٢٣٤٥٦٧٨٩'
             return ''.join(arabic_digits[int(d)] if d.isdigit() else d for d in str(num))
         
+        initial_investment = f"{data['initial_investment_aed']:.2f}"
+        current_value = f"{data['current_value_aed']:.2f}"
+        total_profit = f"{data['total_profit_aed']:+.2f}"
+        profit_percent = f"{data['total_profit_percent']:+.2f}"
+        total_trades = data['total_trades']
+        avg_profit = f"{data['avg_profit_per_trade_aed']:+.4f}"
+        elapsed_hours = f"{data['elapsed_hours']:.1f}"
+        weekly_profit = f"{data['projected_weekly_profit_aed']:+.2f}"
+        weekly_value = f"{data['projected_weekly_value_aed']:.2f}"
+        weekly_return = f"{(data['projected_weekly_profit_aed']/data['initial_investment_aed']*100):+.2f}"
+        
         report = f"""💰 **حاسبة أرباح التداول**
 
 📊 **ملخص الاستثمار**
-💵 رأس المال: {to_arabic_num(f'{data["initial_investment_aed"]:.2f}')} درهم
-💎 القيمة الحالية: {to_arabic_num(f'{data["current_value_aed"]:.2f}')} درهم
-{profit_emoji} الربح: {to_arabic_num(f'{data["total_profit_aed"]:+.2f}')} درهم ({to_arabic_num(f'{data["total_profit_percent"]:+.2f}')}%)
+💵 رأس المال: {to_arabic_num(initial_investment)} درهم
+💎 القيمة الحالية: {to_arabic_num(current_value)} درهم
+{profit_emoji} الربح: {to_arabic_num(total_profit)} درهم ({to_arabic_num(profit_percent)}%)
 
 📈 **نشاط التداول**
-🔄 إجمالي الصفقات: {to_arabic_num(data['total_trades'])}
-⚡ متوسط الربح/صفقة: {to_arabic_num(f'{data["avg_profit_per_trade_aed"]:+.4f}')} درهم
-⏱️ المدة: {to_arabic_num(f'{data["elapsed_hours"]:.1f}')} ساعة
+🔄 إجمالي الصفقات: {to_arabic_num(total_trades)}
+⚡ متوسط الربح/صفقة: {to_arabic_num(avg_profit)} درهم
+⏱️ المدة: {to_arabic_num(elapsed_hours)} ساعة
 
 📅 **التوقعات الأسبوعية**
-{weekly_emoji} الربح المتوقع: {to_arabic_num(f'{data["projected_weekly_profit_aed"]:+.2f}')} درهم
-💰 القيمة النهائية: {to_arabic_num(f'{data["projected_weekly_value_aed"]:.2f}')} درهم
-📊 العائد الأسبوعي: {to_arabic_num(f'{(data["projected_weekly_profit_aed"]/data["initial_investment_aed"]*100):+.2f}')}%
+{weekly_emoji} الربح المتوقع: {to_arabic_num(weekly_profit)} درهم
+💰 القيمة النهائية: {to_arabic_num(weekly_value)} درهم
+📊 العائد الأسبوعي: {to_arabic_num(weekly_return)}%
 
 ---
 **الأفضل أداءً:**
@@ -201,6 +224,8 @@ class ProfitCalculator:
         for i, curr in enumerate(sorted_currencies[:3], 1):
             emoji = "🟢" if curr['profit_aed'] >= 0 else "🔴"
             short_name = curr['symbol'].replace('USDT', '')
-            report += f"\n{to_arabic_num(i)}. {short_name}: {emoji} {to_arabic_num(f'{curr["profit_aed"]:+.2f}')} درهم ({to_arabic_num(f'{curr["profit_percent"]:+.2f}')}%)"
+            profit_val = f"{curr['profit_aed']:+.2f}"
+            profit_pct = f"{curr['profit_percent']:+.2f}"
+            report += f"\n{to_arabic_num(i)}. {short_name}: {emoji} {to_arabic_num(profit_val)} درهم ({to_arabic_num(profit_pct)}%)"
         
         return report
