@@ -355,7 +355,7 @@ def index():
             return render_template_string(
                 HTML_TEMPLATE,
                 mock_mode=True,
-                prices=prices[:5],
+                prices=prices,  # Show all 10 currencies
                 summary=summary,
                 signals=signals,
                 update_time=update_time
@@ -404,7 +404,7 @@ def index():
         return render_template_string(
             HTML_TEMPLATE,
             mock_mode=config.mock_mode,
-            prices=prices[:5],
+            prices=prices,  # Show all 10 currencies
             summary=summary,
             signals=signals,
             update_time=update_time
