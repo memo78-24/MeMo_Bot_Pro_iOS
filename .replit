@@ -46,8 +46,8 @@ args = "python main.py telegram"
 outputType = "console"
 
 [deployment]
-deploymentTarget = "autoscale"
-run = ["gunicorn", "--bind=0.0.0.0:5000", "--reuse-port", "--workers=2", "src.memo_bot_pro.web_app:app"]
+deploymentTarget = "vm"
+run = ["sh", "start_production.sh"]
 
 [[ports]]
 localPort = 5000
