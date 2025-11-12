@@ -3,8 +3,15 @@ from .config import Config
 from .binance_client import BinanceClient
 from .signal_generator import SignalGenerator
 from .monitor import BotHealthMonitor
+from .telegram_bot_enhanced import EnhancedTelegramBot
 import time
 import os
+import asyncio
+import logging
+import threading
+import json
+from telegram import Update
+from telegram.ext import Application
 
 app = Flask(__name__, template_folder='templates')
 
@@ -13,6 +20,15 @@ _client = None
 _signal_gen = None
 _last_error = None
 _monitor = None
+_telegram_bot = None
+_telegram_app = None
+_bot_initialized = False
+_bot_loop = None
+_bot_thread = None
+
+# Setup logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 def get_or_create_client():
     """Lazy initialization of Binance client with error handling"""
@@ -567,7 +583,237 @@ def api_test_notification():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@app.route('/telegram/webhook', methods=['POST'])
+def telegram_webhook():
+    """Webhook endpoint for Telegram updates (with secret token validation)"""
+    global _telegram_app, _bot_loop
+    
+    if not _telegram_app or not _bot_loop:
+        logger.warning("Telegram bot not initialized, ignoring webhook")
+        return jsonify({'status': 'bot not initialized'}), 200
+    
+    # SECURITY: Validate secret token from Telegram
+    secret_token = os.getenv('TELEGRAM_WEBHOOK_SECRET', '').strip()
+    if secret_token:
+        received_token = request.headers.get('X-Telegram-Bot-Api-Secret-Token', '')
+        if received_token != secret_token:
+            logger.warning(f"Webhook request with invalid secret token from {request.remote_addr}")
+            return jsonify({'status': 'unauthorized'}), 403
+    else:
+        logger.warning("TELEGRAM_WEBHOOK_SECRET not set - webhook is NOT SECURE!")
+    
+    try:
+        # Get JSON update from Telegram
+        update_data = request.get_json(force=True)
+        
+        # Create Update object
+        update = Update.de_json(update_data, _telegram_app.bot)
+        
+        # Process update in bot's event loop
+        asyncio.run_coroutine_threadsafe(
+            _telegram_app.process_update(update),
+            _bot_loop
+        )
+        
+        return jsonify({'status': 'ok'}), 200
+        
+    except Exception as e:
+        logger.error(f"Error processing webhook: {e}")
+        return jsonify({'status': 'error', 'message': str(e)}), 200
+
+def _run_async_loop(loop):
+    """Run async event loop in background thread"""
+    asyncio.set_event_loop(loop)
+    loop.run_forever()
+
+async def _start_monitoring_tasks(bot_instance):
+    """Start all background monitoring tasks"""
+    try:
+        # Start instant price monitoring
+        asyncio.create_task(bot_instance.monitor_instant_price_changes())
+        logger.info("✅ Started instant price monitoring (60/min)")
+        
+        # Start 2-hour summary monitoring
+        asyncio.create_task(bot_instance.send_2hour_summary())
+        logger.info("✅ Started 2-hour summary monitoring")
+        
+        # Start heartbeat
+        asyncio.create_task(bot_instance.send_heartbeat_loop())
+        logger.info("✅ Started heartbeat monitoring")
+        
+    except Exception as e:
+        logger.error(f"Error starting monitoring tasks: {e}")
+
+def init_telegram_bot_webhook():
+    """Initialize Telegram bot in webhook mode (no polling)"""
+    global _telegram_bot, _telegram_app, _bot_initialized, _bot_loop, _bot_thread
+    
+    if _bot_initialized:
+        logger.info("Telegram bot already initialized")
+        return
+    
+    try:
+        config = Config.from_env()
+        
+        if not config.validate_telegram():
+            logger.warning("TELEGRAM_BOT_TOKEN not set - bot disabled")
+            return
+        
+        logger.info("🤖 Initializing Telegram bot in webhook mode...")
+        
+        # Create bot instance
+        _telegram_bot = EnhancedTelegramBot(config)
+        
+        # Create new event loop for bot
+        _bot_loop = asyncio.new_event_loop()
+        
+        # Start event loop in background thread FIRST
+        _bot_thread = threading.Thread(target=_run_async_loop, args=(_bot_loop,), daemon=True)
+        _bot_thread.start()
+        logger.info("✅ Started bot event loop in background thread")
+        
+        # Give the loop time to start
+        import time
+        time.sleep(0.5)
+        
+        # Build application in the bot's loop
+        async def _build_app():
+            app = Application.builder().token(config.telegram_bot_token).build()
+            
+            # Register all command handlers
+            from telegram.ext import CommandHandler, CallbackQueryHandler
+            
+            app.add_handler(CommandHandler("start", _telegram_bot.start_command))
+            app.add_handler(CommandHandler("menu", _telegram_bot.menu_command))
+            app.add_handler(CommandHandler("signals", _telegram_bot.signals_command))
+            app.add_handler(CommandHandler("reports", _telegram_bot.reports_command))
+            app.add_handler(CommandHandler("settings", _telegram_bot.settings_command))
+            app.add_handler(CommandHandler("profit", _telegram_bot.profit_command))
+            app.add_handler(CommandHandler("myid", _telegram_bot.myid_command))
+            app.add_handler(CommandHandler("admin", _telegram_bot.admin_command))
+            app.add_handler(CommandHandler("broadcast", _telegram_bot.broadcast_command))
+            app.add_handler(CallbackQueryHandler(_telegram_bot.button_callback))
+            
+            # Initialize application
+            await app.initialize()
+            await app.start()
+            
+            logger.info("✅ Registered all command handlers")
+            
+            # Start scheduler for inactive user checks (must be in async context)
+            _telegram_bot.scheduler.add_job(
+                _telegram_bot.check_inactive_users,
+                'interval',
+                minutes=10,
+                id='inactive_user_check'
+            )
+            _telegram_bot.scheduler.start()
+            logger.info("✅ Started APScheduler for background tasks")
+            
+            return app
+        
+        # Build app in bot's loop
+        _telegram_app = asyncio.run_coroutine_threadsafe(
+            _build_app(),
+            _bot_loop
+        ).result(timeout=10)
+        
+        # Store app reference in bot instance
+        _telegram_bot.app = _telegram_app
+        
+        # Start monitoring tasks
+        asyncio.run_coroutine_threadsafe(
+            _start_monitoring_tasks(_telegram_bot),
+            _bot_loop
+        )
+        
+        _bot_initialized = True
+        
+        logger.info("🚀 Telegram bot initialized successfully in webhook mode")
+        logger.info("✅ Features: EN/AR support, Interactive menus, Auto signals, Reports")
+        logger.info("⚡ INSTANT Alerts: Checking 60 times/minute, alerting on ANY price change")
+        logger.info("📊 2-Hour Summary: WAS vs NOW comparison + BUY/SELL/HOLD advice")
+        logger.info("💓 Heartbeat enabled (60s interval)")
+        
+    except Exception as e:
+        logger.error(f"❌ Error initializing Telegram bot: {e}", exc_info=True)
+        _bot_initialized = False
+
+def setup_webhook():
+    """Setup webhook with Telegram API"""
+    global _telegram_app
+    
+    if not _telegram_app:
+        logger.warning("Telegram app not initialized, skipping webhook setup")
+        return
+    
+    webhook_url = os.getenv('TELEGRAM_WEBHOOK_URL', '').strip()
+    
+    if not webhook_url:
+        logger.warning("⚠️ TELEGRAM_WEBHOOK_URL not set - webhook not configured")
+        logger.warning("   Set TELEGRAM_WEBHOOK_URL=https://your-app.replit.app/telegram/webhook")
+        logger.warning("   Bot will not receive updates until webhook is configured")
+        return
+    
+    try:
+        logger.info(f"📡 Setting up webhook: {webhook_url}")
+        
+        # Get secret token for webhook security
+        secret_token = os.getenv('TELEGRAM_WEBHOOK_SECRET', '').strip()
+        if not secret_token:
+            logger.warning("⚠️ TELEGRAM_WEBHOOK_SECRET not set - webhook will NOT be secure!")
+            logger.warning("   Generate a random token and set it as environment variable")
+        
+        # Set webhook in bot's event loop
+        async def _set_webhook():
+            # Configure webhook with secret token if available
+            webhook_kwargs = {
+                'url': webhook_url,
+                'allowed_updates': Update.ALL_TYPES,
+                'drop_pending_updates': True
+            }
+            if secret_token:
+                webhook_kwargs['secret_token'] = secret_token
+                logger.info("✅ Webhook will use secret token for security")
+            
+            result = await _telegram_app.bot.set_webhook(**webhook_kwargs)
+            
+            if result:
+                # Verify webhook
+                webhook_info = await _telegram_app.bot.get_webhook_info()
+                logger.info(f"✅ Webhook set successfully")
+                logger.info(f"   URL: {webhook_info.url}")
+                logger.info(f"   Pending updates: {webhook_info.pending_update_count}")
+                if webhook_info.last_error_message:
+                    logger.warning(f"   Last error: {webhook_info.last_error_message}")
+                return True
+            else:
+                logger.error("❌ Failed to set webhook")
+                return False
+        
+        result = asyncio.run_coroutine_threadsafe(
+            _set_webhook(),
+            _bot_loop
+        ).result(timeout=10)
+        
+        if result:
+            logger.info("✅ Webhook configured successfully")
+        else:
+            logger.error("❌ Webhook setup failed")
+            
+    except Exception as e:
+        logger.error(f"❌ Error setting up webhook: {e}")
+        logger.warning("   Bot will not receive updates until webhook is configured")
+
 def run_web_server(host='0.0.0.0', port=5000):
     print(f"🚀 MeMo Bot Pro Web Server starting on {host}:{port}")
     print(f"📱 Open your browser to view the dashboard")
     app.run(host=host, port=port, debug=False)
+
+# Initialize Telegram bot on startup (for Gunicorn/production)
+if os.getenv('TELEGRAM_BOT_TOKEN'):
+    try:
+        init_telegram_bot_webhook()
+        setup_webhook()
+    except Exception as e:
+        logger.error(f"Error during bot initialization: {e}")
