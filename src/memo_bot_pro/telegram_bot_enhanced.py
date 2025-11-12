@@ -395,6 +395,21 @@ class EnhancedTelegramBot:
             reply_markup=self._get_settings_keyboard(lang)
         )
     
+    async def profit_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Show profit calculator report"""
+        user_id = update.effective_user.id
+        self._track_user_activity(user_id)
+        lang = self._get_user_lang(user_id)
+        
+        symbols = [symbol['symbol'] for symbol in self.binance_client.get_top_10_currencies()]
+        profit_report = self.profit_calculator.format_profit_report(symbols, lang)
+        
+        await update.message.reply_text(
+            profit_report,
+            parse_mode='Markdown',
+            reply_markup=self._get_main_menu_keyboard(lang)
+        )
+    
     async def myid_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Show user their Telegram ID"""
         user = update.effective_user
@@ -795,6 +810,22 @@ class EnhancedTelegramBot:
                         message += f"   NOW: ${now_price:.4f}\n"
                         message += f"   ADVICE: {signal_emoji} {signal_text}\n\n"
                 
+                # Add profit calculator summary
+                symbols = [s['symbol'] for s in market_data]
+                profit_data = self.profit_calculator.calculate_total_profit(symbols)
+                
+                if profit_data['elapsed_hours'] > 0:
+                    profit_emoji = "🟢" if profit_data['projected_weekly_profit_aed'] >= 0 else "🔴"
+                    message += "─" * 30 + "\n"
+                    if lang == 'ar':
+                        message += f"💰 <b>توقعات الأرباح (١٠٠٠ درهم)</b>\n"
+                        message += f"{profit_emoji} الربح المتوقع أسبوعياً: {profit_data['projected_weekly_profit_aed']:+.2f} درهم\n"
+                        message += f"💎 القيمة النهائية: {profit_data['projected_weekly_value_aed']:.2f} درهم\n"
+                    else:
+                        message += f"💰 <b>Profit Projection (1000 AED)</b>\n"
+                        message += f"{profit_emoji} Weekly Profit: {profit_data['projected_weekly_profit_aed']:+.2f} AED\n"
+                        message += f"💎 Final Value: {profit_data['projected_weekly_value_aed']:.2f} AED\n"
+                
                 # Convert numbers to Arabic numerals
                 message = to_arabic_numerals(message, lang)
                 
@@ -869,6 +900,7 @@ class EnhancedTelegramBot:
             self.app.add_handler(CommandHandler("signals", self.signals_command))
             self.app.add_handler(CommandHandler("reports", self.reports_command))
             self.app.add_handler(CommandHandler("settings", self.settings_command))
+            self.app.add_handler(CommandHandler("profit", self.profit_command))
             self.app.add_handler(CommandHandler("myid", self.myid_command))
             self.app.add_handler(CommandHandler("admin", self.admin_command))
             self.app.add_handler(CommandHandler("broadcast", self.broadcast_command))
