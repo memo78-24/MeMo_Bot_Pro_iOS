@@ -51,7 +51,3 @@ run = ["gunicorn", "--bind=0.0.0.0:5000", "--reuse-port", "--workers=2", "src.me
 [[ports]]
 localPort = 5000
 externalPort = 80
-
-[[ports]]
-localPort = 40131
-externalPort = 3000
