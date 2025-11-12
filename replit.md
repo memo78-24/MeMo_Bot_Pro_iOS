@@ -11,11 +11,15 @@ MeMo Bot Pro is a Binance Advisory & Live Trading assistant with Telegram integr
 This project was originally configured for iOS development using the Briefcase/Toga framework but has been adapted for Replit's Linux environment with both web interface and CLI functionality. The core functionality (Binance integration and Telegram bot) remains the same.
 
 ## Recent Changes
-- **November 12, 2025 (Latest)**: Major feature upgrade with minute-level notifications and admin controls
-  - **Minute-Based Notifications**: Sends all 10 cryptocurrencies every 60 seconds to subscribed users
-    - Removed 1% price change threshold - now sends unconditionally every minute
-    - Removed 5-minute cooldown - continuous updates
-    - Uses cached market data for efficiency
+- **November 12, 2025 (Latest)**: Price-change alerts with trading signals every 2 hours
+  - **Smart Price-Change Detection**: Checks every 2 hours, sends ONLY when prices actually change
+    - Tracks last sent prices per symbol to detect changes
+    - Skips notifications when prices are unchanged (efficient)
+    - Initial notification sent on first run to establish baseline
+  - **Trading Signals Integration**: BUY/SELL/HOLD advice with every price update
+    - Uses SignalGenerator to analyze market trends
+    - Displays signal emoji (🟢 BUY, 🔴 SELL, 🟡 HOLD) next to each currency
+    - Localized for both EN/AR with Arabic-Indic numerals
   - **Inactivity Re-engagement**: Automatic welcome messages for users inactive 60+ minutes
     - Scheduler checks every 10 minutes
     - Persistent main menu across all interactions
@@ -25,7 +29,7 @@ This project was originally configured for iOS development using the Briefcase/T
     - Proper permission checks via TELEGRAM_ADMIN_IDS
     - Sends localized messages with main menu to all users
   - **Enhanced User Storage**: Added activity timestamps (last_activity, last_welcome_sent)
-  - **Complete Translations**: All new features support EN/AR with Arabic-Indic numerals
+  - **Complete Translations**: All features support EN/AR with Arabic-Indic numerals
 - **November 11, 2025**: Upgraded to real-time price-change alerts
   - Replaced time-based notifications with continuous price monitoring
   - Sends alerts immediately when prices change by 1% or more (up or down)
@@ -57,7 +61,8 @@ This project was originally configured for iOS development using the Briefcase/T
   - 💡 Real-time trading signals with click options
   - ⚙️ User settings management
   - 📊 Top 10 trending currencies tracking
-  - ⏱️ **Minute-Level Updates**: All 10 cryptocurrencies sent every 60 seconds (no threshold)
+  - 🔔 **Price Change Alerts**: Checks every 2 hours, notifies ONLY when prices actually change
+  - 💡 **Trading Signals**: BUY/SELL/HOLD advice included with each price update
   - 👋 **Smart Re-engagement**: Welcome messages for users inactive 60+ minutes
   - 🎯 **Persistent Main Menu**: Always available across all interactions
   - 📢 **Admin Broadcast**: Mass messaging system accessible from any device
