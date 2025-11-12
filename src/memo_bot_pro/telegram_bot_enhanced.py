@@ -40,7 +40,7 @@ class EnhancedTelegramBot:
         self.price_monitor_running = False
         self.summary_monitor_running = False
         self.alert_cooldown_seconds = 300  # 5 minutes cooldown per symbol
-        self.price_change_threshold = 0.001  # 0.1% price change threshold (realistic for crypto)
+        self.price_change_threshold = 0.0  # 0% = alert on ANY price change
     
     def is_admin(self, user_id: int) -> bool:
         """Check if a user is an admin"""
@@ -51,6 +51,22 @@ class EnhancedTelegramBot:
         if symbol.endswith('USDT'):
             return symbol[:-4]
         return symbol
+    
+    def _get_currency_logo(self, symbol: str) -> str:
+        """Get currency logo/icon"""
+        logos = {
+            'BTCUSDT': '₿',  # Bitcoin symbol
+            'ETHUSDT': 'Ξ',  # Ethereum symbol
+            'BNBUSDT': '🔶',  # BNB icon
+            'SOLUSDT': '◎',  # Solana symbol
+            'XRPUSDT': '✕',  # XRP symbol
+            'ADAUSDT': '₳',  # Cardano symbol
+            'DOGEUSDT': 'Ð',  # Dogecoin symbol
+            'DOTUSDT': '●',  # Polkadot symbol
+            'MATICUSDT': '⬡',  # Polygon symbol
+            'SHIBUSDT': '🐕',  # Shiba Inu icon
+        }
+        return logos.get(symbol, '●')
     
     def _get_binance_market_url(self, symbol: str) -> str:
         """Get Binance market URL for a symbol"""
@@ -505,9 +521,9 @@ class EnhancedTelegramBot:
         await update.message.reply_text(message, parse_mode='HTML', reply_markup=InlineKeyboardMarkup(keyboard))
     
     async def monitor_instant_price_changes(self):
-        """Check prices 60 times per minute with SMART rate limiting (0.1% threshold + 5min cooldown)"""
-        print("⚡ INSTANT price monitoring started - checking 60/min, alerting on 0.1%+ changes")
-        print(f"   Rate Limiting: 0.1% threshold + 5 minute cooldown per symbol")
+        """Check prices 60 times per minute - alerts on ANY price change with 5min cooldown"""
+        print("⚡ INSTANT price monitoring started - checking 60/min, alerting on ANY price change")
+        print(f"   Rate Limiting: 5 minute cooldown per symbol (prevents spam)")
         self.price_monitor_running = True
         
         while self.price_monitor_running:
@@ -537,33 +553,42 @@ class EnhancedTelegramBot:
                 for symbol_data in market_data:
                     symbol = symbol_data['symbol']
                     current_price = float(symbol_data['price'])
-                    last_price = self.last_sent_prices.get(symbol)
+                    last_alerted_price = self.last_sent_prices.get(symbol)
                     last_alert = self.last_alert_time.get(symbol, 0)
                     
-                    if last_price is None:
-                        # First time - save but don't alert
+                    if last_alerted_price is None:
+                        # First time - save current price and mark as ready for future alerts
                         self.last_sent_prices[symbol] = current_price
+                        self.last_alert_time[symbol] = 0  # Allow first alert immediately
                         continue
                     
-                    # Calculate price change percentage
-                    price_change_pct = abs((current_price - last_price) / last_price)
-                    time_since_alert = current_time - last_alert
+                    # Check if price changed (use epsilon for floating point comparison)
+                    epsilon = 1e-8  # Tiny value to avoid floating point precision issues
+                    price_changed = abs(current_price - last_alerted_price) > epsilon
                     
-                    # Alert if: 0.1% or more change AND cooldown expired
-                    if price_change_pct >= self.price_change_threshold and time_since_alert >= self.alert_cooldown_seconds:
+                    # Check cooldown (0 means never alerted, allow immediately)
+                    if last_alert == 0:
+                        cooldown_ok = True  # First alert - no cooldown
+                    else:
+                        time_since_alert = current_time - last_alert
+                        cooldown_ok = time_since_alert >= self.alert_cooldown_seconds
+                    
+                    # Alert if: ANY price change AND cooldown expired (prevents spam)
+                    if price_changed and cooldown_ok:
                         changed_symbols.append({
                             'symbol': symbol,
-                            'old_price': last_price,
+                            'old_price': last_alerted_price,
                             'new_price': current_price
                         })
+                        # Update last alerted price and time
                         self.last_sent_prices[symbol] = current_price
                         self.last_alert_time[symbol] = current_time
                 
-                # Send alerts for significant changes
+                # Send alerts for ANY price changes
                 if changed_symbols:
                     signals = self.signal_generator.analyze_all_symbols(market_data)
                     await self._send_instant_price_alerts(changed_symbols, signals, users)
-                    print(f"⚡ Alert: {len(changed_symbols)} symbols (0.1%+ change) → sent to {len(users)} users")
+                    print(f"⚡ Alert: {len(changed_symbols)} symbols (ANY change) → sent to {len(users)} users")
                 
                 await asyncio.sleep(1)  # Check every 1 second (60 times per minute)
                 
@@ -631,8 +656,9 @@ class EnhancedTelegramBot:
                     old_price = change['old_price']
                     new_price = change['new_price']
                     
-                    # Get short name and Binance URL
+                    # Get short name, logo, and Binance URL
                     short_name = self._get_short_currency_name(symbol)
+                    logo = self._get_currency_logo(symbol)
                     binance_url = self._get_binance_market_url(symbol)
                     
                     # Get signal
@@ -650,17 +676,16 @@ class EnhancedTelegramBot:
                     # Calculate change values
                     change_pct = ((new_price - old_price) / old_price) * 100
                     change_amount = new_price - old_price
-                    change_arrow = "📈" if new_price > old_price else "📉"
                     
-                    # Format with clickable link
+                    # Format with clickable link and logo
                     if lang == 'ar':
-                        message += f"{change_arrow} <a href=\"{binance_url}\"><b>{short_name}</b></a>\n"
+                        message += f"{logo} <a href=\"{binance_url}\">{short_name}</a>\n"
                         message += f"   كان: ${old_price:.4f}\n"
                         message += f"   الآن: ${new_price:.4f}\n"
                         message += f"   التغير: ${change_amount:+.4f} ({change_pct:+.2f}%)\n"
                         message += f"   {signal_emoji}\n\n"
                     else:
-                        message += f"{change_arrow} <a href=\"{binance_url}\"><b>{short_name}</b></a>\n"
+                        message += f"{logo} <a href=\"{binance_url}\">{short_name}</a>\n"
                         message += f"   WAS: ${old_price:.4f}\n"
                         message += f"   NOW: ${new_price:.4f}\n"
                         message += f"   Change: ${change_amount:+.4f} ({change_pct:+.2f}%)\n"
@@ -669,11 +694,12 @@ class EnhancedTelegramBot:
                 # Convert numbers to Arabic numerals
                 message = to_arabic_numerals(message, lang)
                 
-                # Send alert
+                # Send alert with clickable links enabled
                 await self.app.bot.send_message(
                     chat_id=user_id,
                     text=message,
                     parse_mode='HTML',
+                    disable_web_page_preview=True,  # Don't show preview, just make links clickable
                     reply_markup=self._get_main_menu_keyboard(lang)
                 )
                 
@@ -705,8 +731,9 @@ class EnhancedTelegramBot:
                     now_price = float(symbol_data['price'])
                     was_price = self.last_2hour_prices.get(symbol, now_price)
                     
-                    # Get short name and Binance URL
+                    # Get short name, logo, and Binance URL
                     short_name = self._get_short_currency_name(symbol)
+                    logo = self._get_currency_logo(symbol)
                     binance_url = self._get_binance_market_url(symbol)
                     
                     # Get signal
@@ -737,8 +764,8 @@ class EnhancedTelegramBot:
                     change = now_price - was_price
                     change_pct = (change / was_price * 100) if was_price != 0 else 0
                     
-                    # Format message with clickable link
-                    message += f"<b>{idx}. <a href=\"{binance_url}\">{short_name}</a></b>\n"
+                    # Format message with clickable link and logo
+                    message += f"<b>{idx}. {logo} <a href=\"{binance_url}\">{short_name}</a></b>\n"
                     if lang == 'ar':
                         message += f"   كان: ${was_price:.4f}\n"
                         message += f"   الآن: ${now_price:.4f}\n"
@@ -751,11 +778,12 @@ class EnhancedTelegramBot:
                 # Convert numbers to Arabic numerals
                 message = to_arabic_numerals(message, lang)
                 
-                # Send summary
+                # Send summary with clickable links enabled
                 await self.app.bot.send_message(
                     chat_id=user_id,
                     text=message,
                     parse_mode='HTML',
+                    disable_web_page_preview=True,  # Don't show preview, just make links clickable
                     reply_markup=self._get_main_menu_keyboard(lang)
                 )
                 
