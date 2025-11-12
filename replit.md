@@ -31,6 +31,13 @@ No specific user preferences recorded yet.
 ### Features
 - **Interactive Telegram Bot**: FIRST-TO-MARKET Arabic crypto trading assistant with dual language support, interactive menus, real-time signals, and user settings management. Includes instant price alerts and 2-hour summaries.
 - **Trading Profit Calculator**: Real-time profit/loss tracking for 1000 AED investment across 10 currencies. Shows current value, weekly projections, top performers, and trading activity metrics. Accessible via /profit command or main menu.
+- **Production Monitoring System**: 24/7 deployment health tracking with:
+  - Heartbeat monitoring (60-second intervals) for both development and production environments
+  - Dual-environment dashboard showing dev vs production status side-by-side
+  - Critical alerts (visual + sound) when production bot goes offline (3-minute timeout)
+  - Deployment configuration validator (checks VM type, startup scripts, production readiness)
+  - Real-time heartbeat tracking with "last seen" timestamps
+  - Automatic environment detection (development vs deployed)
 - **Web Dashboard**: Provides a live view of market data and signals.
 - **Health Monitoring**: Dedicated dashboard with real-time checks, visual and sound alerts, and a remote control panel for bot management.
 - **Market Data**: Tracks real-time prices for top 10 cryptocurrencies from Binance.
