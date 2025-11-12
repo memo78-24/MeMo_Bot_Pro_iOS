@@ -26,7 +26,7 @@ No specific user preferences recorded yet.
 - **User Storage**: Utilizes Excel (`openpyxl`) for storing user settings and preferences.
 - **Translations**: Dedicated module for English and Arabic language support.
 - **Configuration**: Environment-based configuration with support for `MOCK_MODE`.
-- **Deployment**: Configured for production deployment with Gunicorn, featuring lightweight health checks, automatic mock mode in deployment, and graceful error handling.
+- **Deployment**: Configured for Reserved VM deployment (required for 24/7 Telegram bot operation) with bash interpreter, Gunicorn production server, lightweight health checks, automatic mock mode in deployment, and graceful error handling. Uses start_production.sh for supervised bot startup with auto-restart.
 
 ### Features
 - **Interactive Telegram Bot**: FIRST-TO-MARKET Arabic crypto trading assistant with dual language support, interactive menus, real-time signals, and user settings management. Includes instant price alerts and 2-hour summaries.
