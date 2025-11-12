@@ -18,9 +18,15 @@ class BotHealthMonitor:
         self.alerts = []
         self.last_check = None
         self.acknowledged_alerts = set()
+        self.last_telegram_check = 0  # Timestamp of last Telegram API call
+        self.telegram_check_interval = 30  # Only check Telegram every 30 seconds
+        self.cached_telegram_status = None
         
     def check_health(self) -> Dict:
         """Perform comprehensive health check"""
+        # Reload config to detect credential changes
+        self.config = Config.from_env()
+        
         self.last_check = datetime.now()
         health_status = {
             'timestamp': self.last_check.isoformat(),
@@ -89,7 +95,7 @@ class BotHealthMonitor:
         return health_status
     
     def _check_binance_api(self) -> Dict:
-        """Check Binance API connection"""
+        """Check Binance API connection with real API call"""
         try:
             if not self.config.binance_api_key or not self.config.binance_api_secret:
                 return {
@@ -98,19 +104,40 @@ class BotHealthMonitor:
                     'status': 'No API keys found'
                 }
             
-            # Quick validation check
-            if len(self.config.binance_api_key) < 20:
+            # Make a real lightweight API call to test connectivity
+            # IMPORTANT: Don't use mock mode for health checks - we need to test REAL API
+            from .binance_client import BinanceClient
+            try:
+                # Force live mode for health check (bypass deployment mock mode)
+                client = BinanceClient(
+                    api_key=self.config.binance_api_key,
+                    api_secret=self.config.binance_api_secret,
+                    mock=False  # Always test real API for health monitoring
+                )
+                
+                # Try to get prices - lightweight operation
+                prices = client.get_all_prices()
+                
+                if not prices or len(prices) == 0:
+                    return {
+                        'healthy': False,
+                        'error': 'Binance API returned no data',
+                        'status': 'No data received'
+                    }
+                
+                return {
+                    'healthy': True,
+                    'status': 'Connected',
+                    'mode': 'Mock' if self.config.mock_mode else 'Live',
+                    'pairs_available': len(prices)
+                }
+            except Exception as api_error:
                 return {
                     'healthy': False,
-                    'error': 'Invalid API key format',
-                    'status': 'API key too short'
+                    'error': f'Binance API call failed: {str(api_error)}',
+                    'status': 'Connection Failed'
                 }
             
-            return {
-                'healthy': True,
-                'status': 'Connected',
-                'mode': 'Mock' if self.config.mock_mode else 'Live'
-            }
         except Exception as e:
             return {
                 'healthy': False,
@@ -119,7 +146,7 @@ class BotHealthMonitor:
             }
     
     def _check_telegram_bot(self) -> Dict:
-        """Check Telegram bot connection"""
+        """Check Telegram bot connection with real API call (rate-limited)"""
         try:
             if not self.config.telegram_bot_token:
                 return {
@@ -128,18 +155,62 @@ class BotHealthMonitor:
                     'status': 'No token found'
                 }
             
-            if len(self.config.telegram_bot_token) < 30:
-                return {
-                    'healthy': False,
-                    'error': 'Invalid bot token format',
-                    'status': 'Token too short'
-                }
+            # Rate limiting: Only check Telegram API every 30 seconds to avoid hitting rate limits
+            current_time = time.time()
+            if current_time - self.last_telegram_check < self.telegram_check_interval:
+                # Return cached status if within rate limit window
+                if self.cached_telegram_status:
+                    return self.cached_telegram_status
             
-            return {
-                'healthy': True,
-                'status': 'Connected',
-                'admins': len(self.config.admin_user_ids)
-            }
+            # Make a real lightweight API call to test bot connectivity
+            import requests
+            try:
+                self.last_telegram_check = current_time
+                # Use getMe endpoint - lightweight operation to verify bot is alive
+                url = f"https://api.telegram.org/bot{self.config.telegram_bot_token}/getMe"
+                response = requests.get(url, timeout=5)
+                
+                if response.status_code != 200:
+                    return {
+                        'healthy': False,
+                        'error': f'Telegram API returned status {response.status_code}',
+                        'status': 'Invalid Token'
+                    }
+                
+                data = response.json()
+                if not data.get('ok'):
+                    return {
+                        'healthy': False,
+                        'error': 'Telegram API returned error',
+                        'status': 'Bot Not Found'
+                    }
+                
+                bot_info = data.get('result', {})
+                result = {
+                    'healthy': True,
+                    'status': 'Connected',
+                    'admins': len(self.config.admin_user_ids),
+                    'bot_username': bot_info.get('username', 'unknown')
+                }
+                self.cached_telegram_status = result  # Cache for rate limiting
+                return result
+            except requests.Timeout:
+                result = {
+                    'healthy': False,
+                    'error': 'Telegram API timeout (>5s)',
+                    'status': 'Connection Timeout'
+                }
+                self.cached_telegram_status = result
+                return result
+            except Exception as api_error:
+                result = {
+                    'healthy': False,
+                    'error': f'Telegram API call failed: {str(api_error)}',
+                    'status': 'Connection Failed'
+                }
+                self.cached_telegram_status = result
+                return result
+            
         except Exception as e:
             return {
                 'healthy': False,

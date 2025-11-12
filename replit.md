@@ -37,7 +37,7 @@ This project was originally configured for iOS development using the Briefcase/T
 
 ## Features
 - **🤖 Interactive Telegram Bot**: FIRST-TO-MARKET Arabic crypto trading assistant
-  - 🌐 Dual language support (English/Arabic)
+  - 🌐 Dual language support (English/Arabic) with Arabic-Indic numerals
   - 📲 Interactive button menus for easy navigation
   - 💡 Real-time trading signals with click options
   - ⚙️ User settings management
@@ -47,6 +47,12 @@ This project was originally configured for iOS development using the Briefcase/T
   - 🛡️ **Smart Cooldown**: 5-minute pause per symbol to prevent notification spam
   - 👑 **Admin controls**: Toggle notifications globally and monitor system status
 - **🌐 Web Dashboard**: Beautiful web interface showing live market data and signals
+- **🔍 Health Monitoring**: Dedicated monitoring dashboard with real-time health checks
+  - 🚨 **Big Alert Banners**: Critical issues shown with red pulsing banner
+  - 🔊 **Sound Alerts**: Looping audio alerts until acknowledged
+  - ✅ **Acknowledgment System**: "IT'S OK" button to dismiss alerts
+  - 🔄 **Auto-Refresh**: Health checks every 5 seconds
+  - 📊 **Comprehensive Checks**: API connectivity, system resources, configuration
 - **📊 Market Data**: Real-time cryptocurrency price tracking for top 10 currencies from Binance
 - **💡 Trading Signals**: Automated signal generation with trend analysis
 - **📈 Reports**: Daily, Weekly, and Monthly crypto performance reports
