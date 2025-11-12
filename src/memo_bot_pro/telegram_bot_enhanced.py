@@ -34,11 +34,8 @@ class EnhancedTelegramBot:
         self.scheduler = AsyncIOScheduler()
         self.app = None
         self.auto_notifications_enabled = True
-        self.previous_prices = {}  # No longer used but kept for compatibility
-        self.last_notification_time = {}  # No longer used but kept for compatibility
+        self.last_sent_prices = {}  # Track last sent prices per symbol for change detection
         self.price_monitor_running = False
-        self.cached_market_data = None  # Cache for minute-level broadcasts
-        self.last_cache_time = None
     
     def is_admin(self, user_id: int) -> bool:
         """Check if a user is an admin"""
@@ -474,9 +471,8 @@ class EnhancedTelegramBot:
 🔔 <b>{get_text(lang, 'auto_notifications')}</b>
 📢 {get_text(lang, 'status')} {enabled_text if self.auto_notifications_enabled else disabled_text}
 👥 {get_text(lang, 'subscribed')} {users_with_auto}
-🔍 {get_text(lang, 'mode')} {get_text(lang, 'realtime_price_mode')}
-⏱️ {get_text(lang, 'check_interval')} {get_text(lang, 'every_30_seconds')}
-🛡️ {get_text(lang, 'cooldown_label')} {get_text(lang, 'cooldown_value')}
+🔍 {get_text(lang, 'mode')} {get_text(lang, 'price_change_mode')}
+⏱️ {get_text(lang, 'check_interval')} {get_text(lang, 'every_2_hours')}
 
 <i>{get_text(lang, 'bot_version')} 1.0.0</i>
 """
@@ -493,44 +489,65 @@ class EnhancedTelegramBot:
         await update.message.reply_text(message, parse_mode='HTML', reply_markup=InlineKeyboardMarkup(keyboard))
     
     async def monitor_price_changes(self):
-        """Send price updates every 60 seconds to all subscribed users"""
-        print("🔍 Price monitoring started - sending updates every 60 seconds")
+        """Check prices every 2 hours and send updates with signals ONLY when prices change"""
+        print("🔍 Price monitoring started - checking every 2 hours, sending only on price changes")
         self.price_monitor_running = True
         
         while self.price_monitor_running:
             try:
                 if not self.auto_notifications_enabled or not self.app:
-                    await asyncio.sleep(60)
+                    await asyncio.sleep(7200)  # 2 hours
                     continue
                 
                 # Get subscribed users
                 users = self.user_storage.get_all_users_with_auto_signals()
                 
                 if not users:
-                    await asyncio.sleep(60)
+                    await asyncio.sleep(7200)
                     continue
                 
-                # Fetch market data once per cycle (cache for efficiency)
-                current_time = datetime.now()
-                if not self.last_cache_time or (current_time - self.last_cache_time).total_seconds() >= 55:
-                    self.cached_market_data = self.binance_client.get_top_10_currencies()
-                    self.last_cache_time = current_time
+                # Fetch current market data
+                market_data = self.binance_client.get_top_10_currencies()
                 
-                if not self.cached_market_data:
-                    await asyncio.sleep(60)
+                if not market_data:
+                    await asyncio.sleep(7200)
                     continue
                 
-                # Send updates to all subscribed users
-                await self._send_minute_updates(self.cached_market_data, users)
+                # Check if any prices have changed
+                prices_changed = False
+                for symbol_data in market_data:
+                    symbol = symbol_data['symbol']
+                    current_price = float(symbol_data['price'])
+                    last_price = self.last_sent_prices.get(symbol)
+                    
+                    if last_price is None or current_price != last_price:
+                        prices_changed = True
+                        break
                 
-                await asyncio.sleep(60)  # Send every 60 seconds
+                # Only send notifications if prices have changed
+                if prices_changed:
+                    # Generate trading signals for all currencies
+                    signals = self.signal_generator.analyze_all_symbols(market_data)
+                    
+                    # Send updates with signals to all subscribed users
+                    await self._send_price_updates_with_signals(market_data, signals, users)
+                    
+                    # Update last sent prices
+                    for symbol_data in market_data:
+                        self.last_sent_prices[symbol_data['symbol']] = float(symbol_data['price'])
+                    
+                    print(f"✅ Price changes detected - notifications sent to {len(users)} users")
+                else:
+                    print(f"📊 No price changes detected - skipping notifications")
+                
+                await asyncio.sleep(7200)  # Check every 2 hours
                 
             except Exception as e:
                 print(f"❌ Error in price monitoring: {e}")
-                await asyncio.sleep(60)
+                await asyncio.sleep(7200)
     
-    async def _send_minute_updates(self, market_data, users):
-        """Send minute-level price updates to all subscribed users"""
+    async def _send_price_updates_with_signals(self, market_data, signals, users):
+        """Send price updates with BUY/SELL/HOLD advice to subscribed users"""
         sent_count = 0
         
         for user in users:
@@ -538,15 +555,27 @@ class EnhancedTelegramBot:
                 user_id = user['user_id']
                 lang = user.get('language', 'en')
                 
-                # Create update message with all top 10
-                message = f"📊 <b>{get_text(lang, 'price_update')}</b>\n\n"
+                # Create update message with all top 10 + trading signals
+                message = f"📊 <b>{get_text(lang, 'price_update')}</b>\n"
+                message += f"<i>2-hour update with trading advice</i>\n\n"
                 
                 for idx, symbol_data in enumerate(market_data, 1):
                     symbol = symbol_data['symbol']
                     price = float(symbol_data['price'])
-                    message += f"{idx}. <b>{symbol}</b>: ${price:.2f}\n"
-                
-                message += f"\n<i>{get_text(lang, 'minute_update')}</i>"
+                    
+                    # Get signal for this symbol
+                    signal_info = signals.get(symbol, {})
+                    action = signal_info.get('action', 'hold').upper()
+                    
+                    # Format signal with emoji
+                    if action == 'BUY':
+                        signal_emoji = get_text(lang, 'buy_signal')
+                    elif action == 'SELL':
+                        signal_emoji = get_text(lang, 'sell_signal')
+                    else:
+                        signal_emoji = get_text(lang, 'hold_signal')
+                    
+                    message += f"{idx}. <b>{symbol}</b>: ${price:.2f} {signal_emoji}\n"
                 
                 # Convert numbers to Arabic numerals for Arabic users
                 message = to_arabic_numerals(message, lang)
@@ -560,13 +589,13 @@ class EnhancedTelegramBot:
                 )
                 
                 sent_count += 1
-                await asyncio.sleep(0.05)  # Rate limiting (20 msgs/sec)
+                await asyncio.sleep(0.1)  # Rate limiting
                 
             except Exception as e:
-                print(f"❌ Error sending minute update to user {user_id}: {e}")
+                print(f"❌ Error sending price update to user {user_id}: {e}")
         
         if sent_count > 0:
-            print(f"📢 Minute update sent to {sent_count} users")
+            print(f"📢 Price update with signals sent to {sent_count} users")
     
     async def check_inactive_users(self):
         """Check for inactive users and send welcome messages"""

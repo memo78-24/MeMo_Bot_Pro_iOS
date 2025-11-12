@@ -37,6 +37,24 @@ class SignalGenerator:
             'confidence': random.randint(60, 95)
         }
 
+    def analyze_all_symbols(self, market_data: List[Dict]) -> Dict[str, Dict]:
+        """Analyze all symbols from market data and return signals keyed by symbol"""
+        signals_dict = {}
+        
+        for symbol_data in market_data:
+            symbol = symbol_data['symbol']
+            price = float(symbol_data['price'])
+            signal = self._analyze_price(symbol, price)
+            
+            signals_dict[symbol] = {
+                'action': signal['recommendation'].lower(),
+                'trend': signal['trend'],
+                'strength': signal['strength'],
+                'confidence': signal['confidence']
+            }
+        
+        return signals_dict
+
     def get_trading_summary(self) -> str:
         signals = self.generate_signals()
         summary = "📊 MeMo Bot Pro - Trading Signals\n\n"
