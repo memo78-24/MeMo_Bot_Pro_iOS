@@ -1,20 +1,22 @@
-from flask import Flask, render_template_string, jsonify
+from flask import Flask, render_template_string, jsonify, request, send_from_directory
 from .config import Config
 from .binance_client import BinanceClient
 from .signal_generator import SignalGenerator
+from .monitor import BotHealthMonitor
 import time
 import os
 
-app = Flask(__name__)
+app = Flask(__name__, template_folder='templates')
 
 # Global client instances (lazy initialization)
 _client = None
 _signal_gen = None
 _last_error = None
+_monitor = None
 
 def get_or_create_client():
     """Lazy initialization of Binance client with error handling"""
-    global _client, _signal_gen, _last_error
+    global _client, _signal_gen, _last_error, _monitor
     
     if _client is None:
         try:
@@ -30,6 +32,7 @@ def get_or_create_client():
                 mock=mock_mode
             )
             _signal_gen = SignalGenerator(_client)
+            _monitor = BotHealthMonitor(config)
             _last_error = None
         except Exception as e:
             _last_error = str(e)
@@ -37,8 +40,9 @@ def get_or_create_client():
             config = Config.from_env()
             _client = BinanceClient(mock=True)
             _signal_gen = SignalGenerator(_client)
+            _monitor = BotHealthMonitor(config)
     
-    return _client, _signal_gen
+    return _client, _signal_gen, _monitor
 
 HTML_TEMPLATE = '''
 <!DOCTYPE html>
@@ -371,7 +375,7 @@ def index():
     
     # Development/local mode - try to use configured settings
     try:
-        client, signal_gen = get_or_create_client()
+        client, signal_gen, _ = get_or_create_client()
         config = Config.from_env()
         
         # Wrap API calls in try-except
@@ -408,11 +412,52 @@ def index():
     except Exception as e:
         return jsonify({'error': str(e), 'status': 'error'}), 500
 
+@app.route('/monitor')
+def monitor_dashboard():
+    """Bot health monitoring dashboard"""
+    template_path = os.path.join(os.path.dirname(__file__), 'templates', 'monitor.html')
+    try:
+        with open(template_path, 'r') as f:
+            return f.read()
+    except:
+        return "Monitor dashboard not found", 404
+
+@app.route('/api/monitor/health')
+def api_monitor_health():
+    """API endpoint for health monitoring"""
+    try:
+        _, _, monitor = get_or_create_client()
+        health_status = monitor.check_health()
+        return jsonify(health_status)
+    except Exception as e:
+        return jsonify({
+            'timestamp': time.time(),
+            'overall_status': 'critical',
+            'checks': {},
+            'active_alerts': [{
+                'severity': 'critical',
+                'message': 'Monitor System Error',
+                'details': str(e)
+            }]
+        }), 200  # Return 200 so the dashboard still works
+
+@app.route('/api/monitor/acknowledge', methods=['POST'])
+def api_monitor_acknowledge():
+    """API endpoint to acknowledge an alert"""
+    try:
+        data = request.get_json()
+        alert_id = data.get('alert_id')
+        _, _, monitor = get_or_create_client()
+        monitor.acknowledge_alert(alert_id)
+        return jsonify({'status': 'acknowledged', 'alert_id': alert_id})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/api/prices')
 def api_prices():
     """API endpoint for prices with error handling"""
     try:
-        client, _ = get_or_create_client()
+        client, _, _ = get_or_create_client()
         return jsonify({'prices': client.get_all_prices()})
     except Exception as e:
         return jsonify({'error': str(e)}), 503
@@ -421,7 +466,7 @@ def api_prices():
 def api_signals():
     """API endpoint for signals with error handling"""
     try:
-        _, signal_gen = get_or_create_client()
+        _, signal_gen, _ = get_or_create_client()
         return jsonify({'signals': signal_gen.generate_signals()})
     except Exception as e:
         return jsonify({'error': str(e)}), 503

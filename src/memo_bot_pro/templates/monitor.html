@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MeMo Bot Monitor - Health Status</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        /* Critical Alert Banner */
+        .alert-banner {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(135deg, #ff0000 0%, #cc0000 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+            z-index: 1000;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+            animation: pulse 1s infinite;
+        }
+        
+        .alert-banner.active {
+            display: block;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.8; }
+        }
+        
+        .alert-banner h1 {
+            font-size: 48px;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            animation: shake 0.5s infinite;
+        }
+        
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+        
+        .alert-banner .message {
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+        
+        .alert-banner .details {
+            font-size: 18px;
+            opacity: 0.9;
+            margin-bottom: 30px;
+        }
+        
+        .alert-banner button {
+            background: white;
+            color: #ff0000;
+            border: none;
+            padding: 20px 60px;
+            font-size: 24px;
+            font-weight: bold;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+            transition: all 0.3s;
+        }
+        
+        .alert-banner button:hover {
+            transform: scale(1.1);
+            box-shadow: 0 8px 30px rgba(0,0,0,0.4);
+        }
+        
+        /* Warning Banner */
+        .warning-banner {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(135deg, #ff9800 0%, #ff5722 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            z-index: 999;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+        }
+        
+        .warning-banner.active {
+            display: block;
+        }
+        
+        .warning-banner h2 {
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+        
+        .warning-banner button {
+            background: white;
+            color: #ff9800;
+            border: none;
+            padding: 15px 40px;
+            font-size: 18px;
+            font-weight: bold;
+            border-radius: 30px;
+            cursor: pointer;
+            margin-top: 15px;
+        }
+        
+        /* Dashboard */
+        .dashboard {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            margin-top: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        
+        .header h1 {
+            color: #667eea;
+            font-size: 42px;
+            margin-bottom: 10px;
+        }
+        
+        .header .subtitle {
+            color: #666;
+            font-size: 18px;
+        }
+        
+        .status-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        .status-card.healthy {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        }
+        
+        .status-card.warning {
+            background: linear-gradient(135deg, #ff9800 0%, #ff5722 100%);
+        }
+        
+        .status-card.critical {
+            background: linear-gradient(135deg, #ff0000 0%, #cc0000 100%);
+        }
+        
+        .status-card h2 {
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+        
+        .status-card .time {
+            opacity: 0.9;
+            font-size: 16px;
+        }
+        
+        .checks-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 30px;
+        }
+        
+        .check-item {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 12px;
+            border-left: 5px solid #667eea;
+        }
+        
+        .check-item.healthy {
+            border-left-color: #38ef7d;
+        }
+        
+        .check-item.unhealthy {
+            border-left-color: #ff0000;
+        }
+        
+        .check-item h3 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 20px;
+        }
+        
+        .check-item .status {
+            font-weight: bold;
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+        
+        .check-item .status.ok {
+            color: #38ef7d;
+        }
+        
+        .check-item .status.error {
+            color: #ff0000;
+        }
+        
+        .check-item .details {
+            color: #666;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        
+        .auto-refresh {
+            text-align: center;
+            margin-top: 30px;
+            color: #666;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Critical Alert Banner -->
+    <div id="criticalAlert" class="alert-banner">
+        <h1>⚠️ CRITICAL ALERT ⚠️</h1>
+        <div class="message" id="alertMessage"></div>
+        <div class="details" id="alertDetails"></div>
+        <button onclick="acknowledgeAlert()">IT'S OK - I'LL FIX IT</button>
+    </div>
+    
+    <!-- Warning Banner -->
+    <div id="warningAlert" class="warning-banner">
+        <h2>⚡ Warning</h2>
+        <div class="message" id="warningMessage"></div>
+        <button onclick="acknowledgeWarning()">ACKNOWLEDGE</button>
+    </div>
+    
+    <!-- Dashboard -->
+    <div class="container">
+        <div class="dashboard">
+            <div class="header">
+                <h1>🤖 MeMo Bot Monitor</h1>
+                <p class="subtitle">Real-time Health Monitoring System</p>
+            </div>
+            
+            <div id="statusCard" class="status-card">
+                <h2 id="overallStatus">Checking...</h2>
+                <div class="time" id="lastCheck">Initializing...</div>
+            </div>
+            
+            <div id="checksGrid" class="checks-grid">
+                <!-- Health checks will be populated here -->
+            </div>
+            
+            <div class="auto-refresh">
+                ⟳ Auto-refreshing every 5 seconds
+            </div>
+        </div>
+    </div>
+    
+    <!-- Audio alert -->
+    <audio id="alertSound" loop>
+        <source src="data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBjOM0vPTgjMGHm7A7+OZUR4PU5fY8MJrIgY5j9Xy02IqBSl7x/DOmUYOGGW37OaoYBsNTqXh8bllHQc2jdLzz4k3CRp3wvDem08WFl+y6eaqaR4NUKfh8bNlHQY6kNPz0IE3CiF3wvDek1EYGWe56OWpYhwOTqXh8bplHgc1jNLzz4k3CRt3wvDem08VGF+w6eiqYhwNT6fh8bJmHQY6kNPz0IE3CiF3wvDek1EXGWi56OWpYhwOT6Xi8bNkHQY7kNPz0IIyCiF2wvDek1EYGWa36Oiqa" preload="auto"></audio>
+    
+    <script>
+        let alertSound = document.getElementById('alertSound');
+        let soundPlaying = false;
+        let acknowledgedAlerts = new Set();
+        
+        async function checkHealth() {
+            try {
+                const response = await fetch('/api/monitor/health');
+                const data = await response.json();
+                updateDashboard(data);
+                handleAlerts(data);
+            } catch (error) {
+                console.error('Error checking health:', error);
+                showCriticalAlert('Monitor Connection Lost', 'Unable to reach monitoring service');
+            }
+        }
+        
+        function updateDashboard(data) {
+            // Update overall status
+            const statusCard = document.getElementById('statusCard');
+            const overallStatus = document.getElementById('overallStatus');
+            const lastCheck = document.getElementById('lastCheck');
+            
+            statusCard.className = 'status-card ' + data.overall_status;
+            
+            if (data.overall_status === 'healthy') {
+                overallStatus.textContent = '✅ All Systems Operational';
+            } else if (data.overall_status === 'warning') {
+                overallStatus.textContent = '⚠️ System Warning Detected';
+            } else {
+                overallStatus.textContent = '🚨 CRITICAL ISSUES DETECTED';
+            }
+            
+            lastCheck.textContent = 'Last check: ' + new Date(data.timestamp).toLocaleString();
+            
+            // Update health checks
+            const checksGrid = document.getElementById('checksGrid');
+            checksGrid.innerHTML = '';
+            
+            for (const [key, check] of Object.entries(data.checks)) {
+                const checkItem = document.createElement('div');
+                checkItem.className = 'check-item ' + (check.healthy ? 'healthy' : 'unhealthy');
+                
+                const title = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                
+                checkItem.innerHTML = `
+                    <h3>${title}</h3>
+                    <div class="status ${check.healthy ? 'ok' : 'error'}">
+                        ${check.status}
+                    </div>
+                    ${check.error ? `<div class="details">⚠️ ${check.error}</div>` : ''}
+                    ${check.mode ? `<div class="details">Mode: ${check.mode}</div>` : ''}
+                    ${check.cpu_percent ? `<div class="details">CPU: ${check.cpu_percent.toFixed(1)}%</div>` : ''}
+                    ${check.memory_percent ? `<div class="details">Memory: ${check.memory_percent.toFixed(1)}%</div>` : ''}
+                    ${check.admins !== undefined ? `<div class="details">Admins: ${check.admins}</div>` : ''}
+                `;
+                
+                checksGrid.appendChild(checkItem);
+            }
+        }
+        
+        function handleAlerts(data) {
+            const alerts = data.active_alerts || [];
+            const criticalAlerts = alerts.filter(a => a.severity === 'critical');
+            const warnings = alerts.filter(a => a.severity === 'warning');
+            
+            // Handle critical alerts
+            if (criticalAlerts.length > 0) {
+                const alert = criticalAlerts[0];
+                const alertId = `${alert.severity}_${alert.message}`;
+                
+                if (!acknowledgedAlerts.has(alertId)) {
+                    showCriticalAlert(alert.message, alert.details);
+                }
+            } else {
+                hideCriticalAlert();
+            }
+            
+            // Handle warnings
+            if (warnings.length > 0 && criticalAlerts.length === 0) {
+                const warning = warnings[0];
+                const warningId = `${warning.severity}_${warning.message}`;
+                
+                if (!acknowledgedAlerts.has(warningId)) {
+                    showWarning(warning.message, warning.details);
+                }
+            } else if (criticalAlerts.length === 0) {
+                hideWarning();
+            }
+        }
+        
+        function showCriticalAlert(message, details) {
+            document.getElementById('alertMessage').textContent = message;
+            document.getElementById('alertDetails').textContent = details || '';
+            document.getElementById('criticalAlert').classList.add('active');
+            playSound();
+        }
+        
+        function hideCriticalAlert() {
+            document.getElementById('criticalAlert').classList.remove('active');
+            stopSound();
+        }
+        
+        function showWarning(message, details) {
+            document.getElementById('warningMessage').textContent = message + (details ? ' - ' + details : '');
+            document.getElementById('warningAlert').classList.add('active');
+        }
+        
+        function hideWarning() {
+            document.getElementById('warningAlert').classList.remove('active');
+        }
+        
+        function acknowledgeAlert() {
+            const message = document.getElementById('alertMessage').textContent;
+            acknowledgedAlerts.add('critical_' + message);
+            hideCriticalAlert();
+            
+            // Send acknowledgment to server
+            fetch('/api/monitor/acknowledge', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({alert_id: 'critical_' + message})
+            });
+        }
+        
+        function acknowledgeWarning() {
+            const message = document.getElementById('warningMessage').textContent;
+            acknowledgedAlerts.add('warning_' + message);
+            hideWarning();
+            
+            // Send acknowledgment to server
+            fetch('/api/monitor/acknowledge', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({alert_id: 'warning_' + message})
+            });
+        }
+        
+        function playSound() {
+            if (!soundPlaying) {
+                alertSound.play().catch(e => console.log('Audio play failed:', e));
+                soundPlaying = true;
+            }
+        }
+        
+        function stopSound() {
+            if (soundPlaying) {
+                alertSound.pause();
+                alertSound.currentTime = 0;
+                soundPlaying = false;
+            }
+        }
+        
+        // Initial check
+        checkHealth();
+        
+        // Auto-refresh every 5 seconds
+        setInterval(checkHealth, 5000);
+    </script>
+</body>
+</html>
