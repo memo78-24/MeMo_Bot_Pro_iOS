@@ -11,25 +11,31 @@ MeMo Bot Pro is a Binance Advisory & Live Trading assistant with Telegram integr
 This project was originally configured for iOS development using the Briefcase/Toga framework but has been adapted for Replit's Linux environment with both web interface and CLI functionality. The core functionality (Binance integration and Telegram bot) remains the same.
 
 ## Recent Changes
-- **November 12, 2025 (Latest)**: Price-change alerts with trading signals every 2 hours
-  - **Smart Price-Change Detection**: Checks every 2 hours, sends ONLY when prices actually change
-    - Tracks last sent prices per symbol to detect changes
-    - Skips notifications when prices are unchanged (efficient)
-    - Initial notification sent on first run to establish baseline
-  - **Trading Signals Integration**: BUY/SELL/HOLD advice with every price update
-    - Uses SignalGenerator to analyze market trends
-    - Displays signal emoji (🟢 BUY, 🔴 SELL, 🟡 HOLD) next to each currency
-    - Localized for both EN/AR with Arabic-Indic numerals
+- **November 12, 2025 (Latest)**: HIGH-FREQUENCY price monitoring with smart rate limiting
+  - **⚡ Instant Price Alerts**: 60 checks per minute (every 1 second) for instant detection
+    - Alerts on 1%+ price changes to prevent spam
+    - 5-minute cooldown per symbol to avoid duplicates
+    - Includes BUY/SELL/HOLD trading signals with each alert
+    - Dual language support (EN/AR) with Arabic-Indic numerals
+  - **📊 2-Hour Summary Reports**: Comprehensive "WAS vs NOW" price comparison
+    - Shows all 10 trending cryptocurrencies
+    - Displays old price, new price, and price change for each
+    - Includes BUY/SELL/HOLD advice for each currency
+    - Runs every 2 hours alongside instant alerts
+  - **💡 Auto-Signals ON by Default**: All new users automatically subscribed
+    - Changed default from False to True in user storage
+    - All existing users re-enabled for notifications
+  - **🎛️ Enhanced Monitoring Dashboard**: Remote management controls
+    - Real-time bot statistics and health monitoring
+    - Remote control panel for sending test notifications
+    - User statistics viewer
+    - Admin-protected endpoints with token authentication
+  - **🔒 Security Improvements**: Admin dashboard secured
+    - Sensitive endpoints require X-Admin-Token header
+    - Read-only stats remain public for viewing
+    - Prevents unauthorized access to bot controls
   - **Inactivity Re-engagement**: Automatic welcome messages for users inactive 60+ minutes
-    - Scheduler checks every 10 minutes
-    - Persistent main menu across all interactions
-    - Activity tracking on all commands and callbacks
   - **Admin Broadcast System**: /broadcast command for mass messaging
-    - Works from any device (laptop/phone) with admin credentials
-    - Proper permission checks via TELEGRAM_ADMIN_IDS
-    - Sends localized messages with main menu to all users
-  - **Enhanced User Storage**: Added activity timestamps (last_activity, last_welcome_sent)
-  - **Complete Translations**: All features support EN/AR with Arabic-Indic numerals
 - **November 11, 2025**: Upgraded to real-time price-change alerts
   - Replaced time-based notifications with continuous price monitoring
   - Sends alerts immediately when prices change by 1% or more (up or down)
@@ -61,8 +67,9 @@ This project was originally configured for iOS development using the Briefcase/T
   - 💡 Real-time trading signals with click options
   - ⚙️ User settings management
   - 📊 Top 10 trending currencies tracking
-  - 🔔 **Price Change Alerts**: Checks every 2 hours, notifies ONLY when prices actually change
-  - 💡 **Trading Signals**: BUY/SELL/HOLD advice included with each price update
+  - ⚡ **Instant Price Alerts**: 60 checks/min, alerts on 1%+ changes with 5-min cooldown
+  - 📊 **2-Hour Summaries**: WAS vs NOW price comparison + BUY/SELL/HOLD advice
+  - 💡 **Auto-Signals ON**: All users subscribed by default to receive notifications
   - 👋 **Smart Re-engagement**: Welcome messages for users inactive 60+ minutes
   - 🎯 **Persistent Main Menu**: Always available across all interactions
   - 📢 **Admin Broadcast**: Mass messaging system accessible from any device
@@ -74,6 +81,11 @@ This project was originally configured for iOS development using the Briefcase/T
   - ✅ **Acknowledgment System**: "IT'S OK" button to dismiss alerts
   - 🔄 **Auto-Refresh**: Health checks every 5 seconds
   - 📊 **Comprehensive Checks**: API connectivity, system resources, configuration
+  - 🎛️ **Remote Control Panel**: Laptop-accessible bot management
+    - Send test notifications to all users
+    - View real-time user statistics
+    - Monitor notification system status
+    - Admin-protected controls with token authentication
 - **📊 Market Data**: Real-time cryptocurrency price tracking for top 10 currencies from Binance
 - **💡 Trading Signals**: Automated signal generation with trend analysis
 - **📈 Reports**: Daily, Weekly, and Monthly crypto performance reports
