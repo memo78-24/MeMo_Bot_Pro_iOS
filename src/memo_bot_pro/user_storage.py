@@ -60,7 +60,7 @@ class UserStorage:
                     break
             
             language = settings.get('language', 'en')
-            auto_signals = str(settings.get('auto_signals', False))
+            auto_signals = str(settings.get('auto_signals', True))  # Default ON for all users
             timezone = settings.get('timezone', 'UTC')
             last_updated = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             last_activity = settings.get('last_activity', last_updated)

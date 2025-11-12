@@ -471,6 +471,53 @@ def api_signals():
     except Exception as e:
         return jsonify({'error': str(e)}), 503
 
+@app.route('/api/bot/stats')
+def api_bot_stats():
+    """API endpoint for bot statistics"""
+    try:
+        from .user_storage import UserStorage
+        storage = UserStorage()
+        all_users = storage.get_all_users()
+        subscribed_users = storage.get_all_users_with_auto_signals()
+        
+        return jsonify({
+            'total_users': len(all_users),
+            'subscribed_users': len(subscribed_users),
+            'instant_alerts_enabled': True,  # Always enabled in new implementation
+            'summary_enabled': True,  # Always enabled in new implementation
+            'check_frequency': 60,  # 60 checks per minute
+            'summary_interval': 7200  # 2 hours in seconds
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/bot/users')
+def api_bot_users():
+    """API endpoint for user list"""
+    try:
+        from .user_storage import UserStorage
+        storage = UserStorage()
+        users = storage.get_all_users()
+        return jsonify({'users': users})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/bot/test-notification', methods=['POST'])
+def api_test_notification():
+    """API endpoint to trigger a test notification"""
+    try:
+        # Create a flag file that the Telegram bot will check
+        flag_file = '/tmp/memo_bot_test_notification.flag'
+        with open(flag_file, 'w') as f:
+            f.write('test_notification_requested')
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'Test notification request queued. Bot will send it on next check.'
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 def run_web_server(host='0.0.0.0', port=5000):
     print(f"🚀 MeMo Bot Pro Web Server starting on {host}:{port}")
     print(f"📱 Open your browser to view the dashboard")

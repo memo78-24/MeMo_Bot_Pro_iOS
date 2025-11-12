@@ -236,6 +236,116 @@
             color: #666;
             font-size: 14px;
         }
+        
+        /* Control Panel */
+        .control-panel {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin-top: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        .control-panel h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 28px;
+        }
+        
+        .control-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .control-button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 20px;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+        
+        .control-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+        }
+        
+        .control-button:active {
+            transform: translateY(0);
+        }
+        
+        .control-button.danger {
+            background: linear-gradient(135deg, #ff0000 0%, #cc0000 100%);
+        }
+        
+        .control-button.success {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        }
+        
+        .control-button.warning {
+            background: linear-gradient(135deg, #ff9800 0%, #ff5722 100%);
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .stat-item {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        
+        .stat-label {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 10px;
+        }
+        
+        .stat-value {
+            font-size: 32px;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .notification-status {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .notification-status h3 {
+            color: #333;
+            margin-bottom: 15px;
+        }
+        
+        .notification-status .status-indicator {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            margin-right: 10px;
+        }
+        
+        .notification-status .status-indicator.active {
+            background: #38ef7d;
+        }
+        
+        .notification-status .status-indicator.inactive {
+            background: #ff0000;
+        }
     </style>
 </head>
 <body>
@@ -269,6 +379,57 @@
             
             <div id="checksGrid" class="checks-grid">
                 <!-- Health checks will be populated here -->
+            </div>
+            
+            <!-- Remote Control Panel -->
+            <div class="control-panel">
+                <h2>🎛️ Remote Control Panel</h2>
+                
+                <div class="notification-status">
+                    <h3>
+                        <span class="status-indicator active" id="notifIndicator"></span>
+                        Notification System Status
+                    </h3>
+                    <div id="notifDetails">
+                        <p>⚡ Instant Alerts: <strong id="instantStatus">Checking...</strong></p>
+                        <p>📊 2-Hour Summaries: <strong id="summaryStatus">Checking...</strong></p>
+                        <p>👥 Active Users: <strong id="activeUsers">-</strong></p>
+                    </div>
+                </div>
+                
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <div class="stat-label">Total Users</div>
+                        <div class="stat-value" id="totalUsers">-</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">Subscribed</div>
+                        <div class="stat-value" id="subscribedUsers">-</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">Checks/Min</div>
+                        <div class="stat-value">60</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">Bot Version</div>
+                        <div class="stat-value" style="font-size: 24px;">1.0</div>
+                    </div>
+                </div>
+                
+                <div class="control-grid">
+                    <button class="control-button success" onclick="sendTestNotification()">
+                        📤 Send Test Notification
+                    </button>
+                    <button class="control-button" onclick="viewBotLogs()">
+                        📋 View Bot Logs
+                    </button>
+                    <button class="control-button warning" onclick="restartBot()">
+                        🔄 Restart Bot
+                    </button>
+                    <button class="control-button" onclick="viewUserStats()">
+                        👥 User Statistics
+                    </button>
+                </div>
             </div>
             
             <div class="auto-refresh">
@@ -434,11 +595,81 @@
             }
         }
         
+        // Control panel functions
+        async function loadBotStats() {
+            try {
+                const response = await fetch('/api/bot/stats');
+                if (response.ok) {
+                    const data = await response.json();
+                    document.getElementById('totalUsers').textContent = data.total_users || '-';
+                    document.getElementById('subscribedUsers').textContent = data.subscribed_users || '-';
+                    document.getElementById('activeUsers').textContent = data.subscribed_users || '-';
+                    document.getElementById('instantStatus').textContent = data.instant_alerts_enabled ? 'Active ✓' : 'Disabled ✗';
+                    document.getElementById('summaryStatus').textContent = data.summary_enabled ? 'Active ✓' : 'Disabled ✗';
+                    
+                    // Update indicator
+                    const indicator = document.getElementById('notifIndicator');
+                    if (data.instant_alerts_enabled && data.summary_enabled) {
+                        indicator.className = 'status-indicator active';
+                    } else {
+                        indicator.className = 'status-indicator inactive';
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading bot stats:', error);
+            }
+        }
+        
+        async function sendTestNotification() {
+            if (confirm('Send a test notification to all subscribed users?')) {
+                try {
+                    const response = await fetch('/api/bot/test-notification', {method: 'POST'});
+                    if (response.ok) {
+                        alert('✅ Test notification sent successfully!');
+                    } else {
+                        alert('❌ Failed to send test notification');
+                    }
+                } catch (error) {
+                    alert('❌ Error: ' + error.message);
+                }
+            }
+        }
+        
+        function viewBotLogs() {
+            alert('Bot logs can be viewed in the Replit console.\nClick on "Telegram Bot" workflow to see real-time logs.');
+        }
+        
+        function restartBot() {
+            alert('To restart the bot:\n1. Go to Workflows in Replit\n2. Stop "Telegram Bot" workflow\n3. Start it again\n\nOr use the Replit interface to restart all workflows.');
+        }
+        
+        async function viewUserStats() {
+            try {
+                const response = await fetch('/api/bot/users');
+                if (response.ok) {
+                    const data = await response.json();
+                    let message = '📊 USER STATISTICS\\n\\n';
+                    data.users.forEach((user, idx) => {
+                        message += `${idx + 1}. ${user.username}\\n`;
+                        message += `   Language: ${user.language.toUpperCase()}\\n`;
+                        message += `   Auto-Signals: ${user.auto_signals ? 'ON' : 'OFF'}\\n\\n`;
+                    });
+                    alert(message);
+                } else {
+                    alert('❌ Failed to load user statistics');
+                }
+            } catch (error) {
+                alert('❌ Error: ' + error.message);
+            }
+        }
+        
         // Initial check
         checkHealth();
+        loadBotStats();
         
         // Auto-refresh every 5 seconds
         setInterval(checkHealth, 5000);
+        setInterval(loadBotStats, 10000); // Refresh stats every 10 seconds
     </script>
 </body>
 </html>
