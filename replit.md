@@ -11,12 +11,15 @@ MeMo Bot Pro is a Binance Advisory & Live Trading assistant with Telegram integr
 This project was originally configured for iOS development using the Briefcase/Toga framework but has been adapted for Replit's Linux environment with both web interface and CLI functionality. The core functionality (Binance integration and Telegram bot) remains the same.
 
 ## Recent Changes
-- **November 12, 2025 (Latest)**: HIGH-FREQUENCY price monitoring with smart rate limiting
+- **November 12, 2025 (Latest)**: HIGH-FREQUENCY price monitoring with 0.1% threshold (realistic for crypto markets)
   - **⚡ Instant Price Alerts**: 60 checks per minute (every 1 second) for instant detection
-    - Alerts on 1%+ price changes to prevent spam
+    - Alerts on 0.1%+ price changes (realistic threshold based on market analysis)
     - 5-minute cooldown per symbol to avoid duplicates
     - Includes BUY/SELL/HOLD trading signals with each alert
     - Dual language support (EN/AR) with Arabic-Indic numerals
+    - **NEW**: Shortened currency names (BTC instead of BTCUSDT)
+    - **NEW**: Clickable Binance market links on currency names
+    - **NEW**: Detailed WAS → NOW → Change calculations with 4-decimal precision
   - **📊 2-Hour Summary Reports**: Comprehensive "WAS vs NOW" price comparison
     - Shows all 10 trending cryptocurrencies
     - Displays old price, new price, and price change for each
@@ -67,8 +70,13 @@ This project was originally configured for iOS development using the Briefcase/T
   - 💡 Real-time trading signals with click options
   - ⚙️ User settings management
   - 📊 Top 10 trending currencies tracking
-  - ⚡ **Instant Price Alerts**: 60 checks/min, alerts on 1%+ changes with 5-min cooldown
+  - ⚡ **Instant Price Alerts**: 60 checks/min, alerts on 0.1%+ changes (realistic threshold)
+    - 🔗 Clickable currency names linking directly to Binance market
+    - 📊 Detailed WAS → NOW → Change with 4-decimal precision
+    - 📉 Shows absolute price change + percentage
   - 📊 **2-Hour Summaries**: WAS vs NOW price comparison + BUY/SELL/HOLD advice
+    - 🔗 Clickable short currency names (BTC, ETH, etc.)
+    - 💹 Direct links to Binance trading pages
   - 💡 **Auto-Signals ON**: All users subscribed by default to receive notifications
   - 👋 **Smart Re-engagement**: Welcome messages for users inactive 60+ minutes
   - 🎯 **Persistent Main Menu**: Always available across all interactions
