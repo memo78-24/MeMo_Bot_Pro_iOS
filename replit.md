@@ -30,6 +30,7 @@ No specific user preferences recorded yet.
 
 ### Features
 - **Interactive Telegram Bot**: FIRST-TO-MARKET Arabic crypto trading assistant with dual language support, interactive menus, real-time signals, and user settings management. Includes instant price alerts and 2-hour summaries.
+- **Trading Profit Calculator**: Real-time profit/loss tracking for 1000 AED investment across 10 currencies. Shows current value, weekly projections, top performers, and trading activity metrics. Accessible via /profit command or main menu.
 - **Web Dashboard**: Provides a live view of market data and signals.
 - **Health Monitoring**: Dedicated dashboard with real-time checks, visual and sound alerts, and a remote control panel for bot management.
 - **Market Data**: Tracks real-time prices for top 10 cryptocurrencies from Binance.
