@@ -9,7 +9,7 @@ class Config:
     binance_api_secret: Optional[str] = None
     telegram_bot_token: Optional[str] = None
     telegram_chat_id: Optional[str] = None
-    mock_mode: bool = True
+    mock_mode: bool = False  # Default to REAL Binance API
     admin_user_ids: list = None
     
     def __post_init__(self):
@@ -27,7 +27,7 @@ class Config:
             binance_api_secret=os.getenv('BINANCE_API_SECRET'),
             telegram_bot_token=os.getenv('TELEGRAM_BOT_TOKEN'),
             telegram_chat_id=os.getenv('TELEGRAM_CHAT_ID'),
-            mock_mode=os.getenv('MOCK_MODE', 'true').lower() == 'true',
+            mock_mode=os.getenv('MOCK_MODE', 'false').lower() == 'true',  # Default to REAL API
             admin_user_ids=admin_user_ids
         )
 

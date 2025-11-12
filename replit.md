@@ -47,11 +47,11 @@ This project was originally configured for iOS development using the Briefcase/T
   - 🛡️ **Smart Cooldown**: 5-minute pause per symbol to prevent notification spam
   - 👑 **Admin controls**: Toggle notifications globally and monitor system status
 - **🌐 Web Dashboard**: Beautiful web interface showing live market data and signals
-- **📊 Market Data**: Real-time cryptocurrency price tracking for top 10 currencies
+- **📊 Market Data**: Real-time cryptocurrency price tracking for top 10 currencies from Binance
 - **💡 Trading Signals**: Automated signal generation with trend analysis
 - **📈 Reports**: Daily, Weekly, and Monthly crypto performance reports
 - **💾 User Storage**: Excel-based user settings and preferences storage
-- **🔒 Mock Mode**: Safe testing without real API credentials
+- **🔒 Mock Mode**: Available for testing (disabled by default, uses REAL Binance API)
 - **⚡ CLI Interface**: Easy command-line access to all features
 - **📱 Auto-refresh**: Web dashboard updates every 30 seconds
 
@@ -132,14 +132,14 @@ python main.py help
 ```
 
 ### Environment Variables
-The application supports the following environment variables for live mode:
+The application supports the following environment variables:
 
-- `BINANCE_API_KEY`: Your Binance API key (optional, uses mock if not set)
-- `BINANCE_API_SECRET`: Your Binance API secret (optional)
+- `BINANCE_API_KEY`: Your Binance API key (required for real data)
+- `BINANCE_API_SECRET`: Your Binance API secret (required for real data)
 - `TELEGRAM_BOT_TOKEN`: Your Telegram bot token (required for bot)
 - `TELEGRAM_CHAT_ID`: Your Telegram chat ID (optional)
 - `TELEGRAM_ADMIN_IDS`: Comma-separated list of admin Telegram user IDs (optional, e.g., "123456789,987654321")
-- `MOCK_MODE`: Set to 'false' to use live APIs (default: true)
+- `MOCK_MODE`: Set to 'true' to use mock data for testing (default: false - uses REAL Binance API)
 
 ### Admin Setup
 To make yourself an admin:
@@ -150,17 +150,23 @@ To make yourself an admin:
 
 See `ADMIN_SETUP.md` for detailed instructions.
 
-### Mock Mode vs Live Mode
-By default, the application runs in **mock mode** with simulated data. This allows you to test all features without:
-- Real API credentials
-- Risk of actual trades
-- Rate limiting issues
+### Live Mode vs Mock Mode
+By default, the application runs in **LIVE MODE** with real Binance data when API credentials are provided. This gives you:
+- ✅ Real-time cryptocurrency prices
+- ✅ Accurate top 10 trending cryptocurrencies  
+- ✅ Live trading signals
+- ✅ Actual price change alerts
 
-To enable live mode:
+**Current Setup**: Your system is configured with Binance API credentials and running in LIVE MODE.
+
+To enable mock mode for testing:
+1. Set `MOCK_MODE=true` in environment variables
+2. Restart the workflows
+
+API Setup:
 1. Obtain API keys from Binance (https://www.binance.com/en/my/settings/api-management)
 2. Create a Telegram bot via @BotFather
-3. Set the environment variables
-4. Set `MOCK_MODE=false`
+3. Set the environment variables in Replit Secrets
 
 ## Dependencies
 - **python-binance (1.0.19)**: Binance API wrapper
