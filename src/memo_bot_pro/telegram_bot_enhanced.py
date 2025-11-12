@@ -18,6 +18,7 @@ from .signal_generator import SignalGenerator
 from .translations import get_text, to_arabic_numerals
 from .user_storage import UserStorage
 from .reports import ReportGenerator
+from .profit_calculator import ProfitCalculator
 
 
 class EnhancedTelegramBot:
@@ -31,6 +32,7 @@ class EnhancedTelegramBot:
         self.signal_generator = SignalGenerator(self.binance_client)
         self.user_storage = UserStorage()
         self.report_generator = ReportGenerator(self.binance_client, self.signal_generator)
+        self.profit_calculator = ProfitCalculator()
         self.scheduler = AsyncIOScheduler()
         self.app = None
         self.auto_notifications_enabled = True
@@ -101,7 +103,10 @@ class EnhancedTelegramBot:
                 InlineKeyboardButton(get_text(lang, 'reports'), callback_data='menu_reports')
             ],
             [
-                InlineKeyboardButton(get_text(lang, 'settings'), callback_data='menu_settings'),
+                InlineKeyboardButton("💰 " + get_text(lang, 'profit_calc'), callback_data='menu_profit'),
+                InlineKeyboardButton(get_text(lang, 'settings'), callback_data='menu_settings')
+            ],
+            [
                 InlineKeyboardButton(get_text(lang, 'help'), callback_data='menu_help')
             ]
         ]
@@ -223,6 +228,18 @@ class EnhancedTelegramBot:
             await query.edit_message_text(
                 get_text(lang, 'settings'),
                 reply_markup=self._get_settings_keyboard(lang)
+            )
+
+        elif data == 'menu_profit':
+            lang = self._get_user_lang(user_id)
+            symbols = [symbol['symbol'] for symbol in self.binance_client.get_top_10_currencies()]
+            profit_report = self.profit_calculator.format_profit_report(symbols, lang)
+            
+            back_keyboard = [[InlineKeyboardButton(get_text(lang, 'back'), callback_data='back_main')]]
+            await query.edit_message_text(
+                profit_report,
+                parse_mode='Markdown',
+                reply_markup=InlineKeyboardMarkup(back_keyboard)
             )
 
         elif data == 'menu_help':
@@ -555,6 +572,9 @@ class EnhancedTelegramBot:
                     current_price = float(symbol_data['price'])
                     last_alerted_price = self.last_sent_prices.get(symbol)
                     last_alert = self.last_alert_time.get(symbol, 0)
+                    
+                    # Update profit calculator with latest price
+                    self.profit_calculator.update_price(symbol, current_price)
                     
                     if last_alerted_price is None:
                         # First time - save current price and mark as ready for future alerts
