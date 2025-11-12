@@ -27,5 +27,6 @@ trap "echo '🛑 Shutting down...'; kill $TELEGRAM_SUPERVISOR_PID 2>/dev/null ||
 sleep 3
 
 # Start Web Dashboard on port 5000 (foreground - keeps container alive)
+# IMPORTANT: Using --workers=1 to ensure heartbeat state consistency
 echo "🌐 Starting Web Dashboard on port 5000..."
-exec gunicorn --bind=0.0.0.0:5000 --reuse-port --workers=2 --timeout=120 --graceful-timeout=30 src.memo_bot_pro.web_app:app
+exec gunicorn --bind=0.0.0.0:5000 --reuse-port --workers=1 --timeout=120 --graceful-timeout=30 src.memo_bot_pro.web_app:app

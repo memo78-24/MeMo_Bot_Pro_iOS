@@ -453,6 +453,44 @@ def api_monitor_acknowledge():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/monitor/heartbeat', methods=['POST'])
+def api_heartbeat():
+    """Record heartbeat from Telegram bot (production or dev)"""
+    try:
+        data = request.get_json() or {}
+        environment = data.get('environment', 'production')
+        bot_info = data.get('bot_info', {})
+        
+        _, _, monitor = get_or_create_client()
+        monitor.record_heartbeat(environment)
+        
+        return jsonify({
+            'status': 'received',
+            'environment': environment,
+            'timestamp': time.time()
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/monitor/production-status')
+def api_production_status():
+    """Get production and dev bot status"""
+    try:
+        _, _, monitor = get_or_create_client()
+        
+        prod_status = monitor.check_production_status()
+        dev_status = monitor.check_dev_status()
+        deployment_status = monitor._check_deployment_config()
+        
+        return jsonify({
+            'production': prod_status,
+            'development': dev_status,
+            'deployment_config': deployment_status,
+            'timestamp': time.time()
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/api/prices')
 def api_prices():
     """API endpoint for prices with error handling"""

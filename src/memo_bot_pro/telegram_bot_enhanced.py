@@ -1,4 +1,6 @@
 import asyncio
+import os
+import requests
 from typing import Optional
 from datetime import datetime
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
@@ -884,6 +886,55 @@ class EnhancedTelegramBot:
                     
         except Exception as e:
             print(f"❌ Error checking inactive users: {e}")
+    
+    async def send_heartbeat_loop(self):
+        """Send heartbeat to web dashboard every 60 seconds"""
+        heartbeat_interval = 60
+        
+        is_deployment = os.getenv('REPLIT_DEPLOYMENT') == '1'
+        environment = 'production' if is_deployment else 'development'
+        
+        repl_slug = os.getenv('REPL_SLUG', 'memo-bot-pro')
+        repl_owner = os.getenv('REPL_OWNER', 'unknown')
+        
+        possible_urls = [
+            f"https://{repl_slug}.{repl_owner}.repl.co/api/monitor/heartbeat",
+            f"https://{repl_slug}-{repl_owner}.replit.app/api/monitor/heartbeat",
+            "http://localhost:5000/api/monitor/heartbeat",
+            "http://0.0.0.0:5000/api/monitor/heartbeat"
+        ]
+        
+        print(f"💓 Heartbeat system started ({environment} environment)")
+        
+        while True:
+            try:
+                for url in possible_urls:
+                    try:
+                        loop = asyncio.get_event_loop()
+                        response = await loop.run_in_executor(
+                            None,
+                            lambda u=url: requests.post(
+                                u,
+                                json={
+                                    'environment': environment,
+                                    'bot_info': {
+                                        'timestamp': datetime.now().isoformat(),
+                                        'mock_mode': self.config.mock_mode
+                                    }
+                                },
+                                timeout=2
+                            )
+                        )
+                        
+                        if response.status_code == 200:
+                            break
+                    except:
+                        continue
+                
+                await asyncio.sleep(heartbeat_interval)
+                
+            except Exception as e:
+                await asyncio.sleep(heartbeat_interval)
 
     async def run(self):
         if not self.config.validate_telegram():
@@ -915,9 +966,10 @@ class EnhancedTelegramBot:
             )
             self.scheduler.start()
             
-            # Start BOTH monitoring tasks
+            # Start all monitoring tasks
             instant_monitor_task = asyncio.create_task(self.monitor_instant_price_changes())
             summary_monitor_task = asyncio.create_task(self.send_2hour_summary())
+            heartbeat_task = asyncio.create_task(self.send_heartbeat_loop())
             
             print("🚀 MeMo Bot Pro Enhanced Telegram Bot is running...")
             print("✅ Features: EN/AR support, Interactive menus, Auto signals, Reports")
@@ -926,6 +978,7 @@ class EnhancedTelegramBot:
             print("💡 Auto-Signals: ON by default for all users")
             print("👋 Welcome Messages: Checking inactive users every 10 minutes")
             print("📢 Admin Broadcast: /broadcast command available")
+            print("💓 Production Monitoring: Heartbeat enabled (60s interval)")
             print("Press Ctrl+C to stop")
             
             await self.app.run_polling(allowed_updates=Update.ALL_TYPES)

@@ -22,6 +22,12 @@ class BotHealthMonitor:
         self.telegram_check_interval = 30  # Only check Telegram every 30 seconds
         self.cached_telegram_status = None
         
+        # Production heartbeat tracking
+        self.production_heartbeat_last = None  # Last heartbeat from production Telegram bot
+        self.production_heartbeat_timeout = 180  # 3 minutes (3 heartbeats missed = critical)
+        self.dev_heartbeat_last = None  # Last heartbeat from dev Telegram bot
+        self.deployment_config_status = None  # Cache deployment config validation
+        
     def check_health(self) -> Dict:
         """Perform comprehensive health check"""
         # Reload config to detect credential changes
@@ -278,6 +284,102 @@ class BotHealthMonitor:
             'healthy': not self.config.mock_mode,
             'status': 'Mock Mode' if self.config.mock_mode else 'Live Mode',
             'error': 'Running in mock mode with simulated data' if self.config.mock_mode else None
+        }
+    
+    def _check_deployment_config(self) -> Dict:
+        """Check deployment configuration for production readiness"""
+        try:
+            issues = []
+            replit_path = '.replit'
+            
+            if not os.path.exists(replit_path):
+                return {
+                    'healthy': False,
+                    'error': '.replit file not found',
+                    'status': 'Not Configured'
+                }
+            
+            with open(replit_path, 'r') as f:
+                config_content = f.read()
+            
+            # Check deployment target
+            if 'deploymentTarget = "vm"' not in config_content:
+                issues.append('Not using VM deployment (use Reserved VM for 24/7 operation)')
+            
+            # Check if start script exists
+            if 'start_production.sh' in config_content:
+                if not os.path.exists('start_production.sh'):
+                    issues.append('start_production.sh referenced but not found')
+                elif not os.access('start_production.sh', os.X_OK):
+                    issues.append('start_production.sh not executable')
+            
+            return {
+                'healthy': len(issues) == 0,
+                'error': '; '.join(issues) if issues else None,
+                'status': 'Ready for Production' if len(issues) == 0 else 'Configuration Issues',
+                'deployment_type': 'vm' if 'deploymentTarget = "vm"' in config_content else 'other'
+            }
+        except Exception as e:
+            return {
+                'healthy': False,
+                'error': str(e),
+                'status': 'Error'
+            }
+    
+    def record_heartbeat(self, environment: str = 'production'):
+        """Record a heartbeat from Telegram bot"""
+        timestamp = time.time()
+        if environment == 'production':
+            self.production_heartbeat_last = timestamp
+        else:
+            self.dev_heartbeat_last = timestamp
+    
+    def check_production_status(self) -> Dict:
+        """Check production Telegram bot status via heartbeat"""
+        current_time = time.time()
+        
+        if self.production_heartbeat_last is None:
+            return {
+                'healthy': False,
+                'status': 'No Production Heartbeat',
+                'error': 'Production bot has never connected',
+                'last_seen': None,
+                'seconds_ago': None
+            }
+        
+        seconds_since_heartbeat = current_time - self.production_heartbeat_last
+        is_healthy = seconds_since_heartbeat < self.production_heartbeat_timeout
+        
+        return {
+            'healthy': is_healthy,
+            'status': 'Online' if is_healthy else 'OFFLINE',
+            'last_seen': datetime.fromtimestamp(self.production_heartbeat_last).isoformat(),
+            'seconds_ago': int(seconds_since_heartbeat),
+            'error': f'No heartbeat for {int(seconds_since_heartbeat)}s (timeout: {self.production_heartbeat_timeout}s)' if not is_healthy else None
+        }
+    
+    def check_dev_status(self) -> Dict:
+        """Check development Telegram bot status via heartbeat"""
+        current_time = time.time()
+        
+        if self.dev_heartbeat_last is None:
+            return {
+                'healthy': False,
+                'status': 'No Development Heartbeat',
+                'error': 'Dev bot not sending heartbeats',
+                'last_seen': None,
+                'seconds_ago': None
+            }
+        
+        seconds_since_heartbeat = current_time - self.dev_heartbeat_last
+        is_healthy = seconds_since_heartbeat < self.production_heartbeat_timeout
+        
+        return {
+            'healthy': is_healthy,
+            'status': 'Online' if is_healthy else 'OFFLINE',
+            'last_seen': datetime.fromtimestamp(self.dev_heartbeat_last).isoformat(),
+            'seconds_ago': int(seconds_since_heartbeat),
+            'error': f'No heartbeat for {int(seconds_since_heartbeat)}s' if not is_healthy else None
         }
     
     def acknowledge_alert(self, alert_id: str):

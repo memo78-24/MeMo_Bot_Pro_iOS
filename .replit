@@ -26,13 +26,13 @@ args = "Telegram Bot"
 name = "Web Dashboard"
 author = "agent"
 
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "gunicorn --bind=0.0.0.0:5000 --reuse-port --workers=2 src.memo_bot_pro.web_app:app"
-waitForPort = 5000
-
 [workflows.workflow.metadata]
 outputType = "webview"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "gunicorn --bind=0.0.0.0:5000 --reuse-port --workers=1 src.memo_bot_pro.web_app:app"
+waitForPort = 5000
 
 [[workflows.workflow]]
 name = "Telegram Bot"
