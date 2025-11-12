@@ -35,9 +35,12 @@ class EnhancedTelegramBot:
         self.app = None
         self.auto_notifications_enabled = True
         self.last_sent_prices = {}  # Track last sent prices per symbol for instant alerts
+        self.last_alert_time = {}  # Track last alert time per symbol to prevent spam
         self.last_2hour_prices = {}  # Track prices for 2-hour summary comparison
         self.price_monitor_running = False
         self.summary_monitor_running = False
+        self.alert_cooldown_seconds = 300  # 5 minutes cooldown per symbol
+        self.price_change_threshold = 0.01  # 1% price change threshold
     
     def is_admin(self, user_id: int) -> bool:
         """Check if a user is an admin"""
@@ -491,8 +494,9 @@ class EnhancedTelegramBot:
         await update.message.reply_text(message, parse_mode='HTML', reply_markup=InlineKeyboardMarkup(keyboard))
     
     async def monitor_instant_price_changes(self):
-        """Check prices 60 times per minute (every 1 second) and send instant alerts on ANY price change"""
-        print("⚡ INSTANT price monitoring started - checking 60 times/minute, alerting on ANY change")
+        """Check prices 60 times per minute with SMART rate limiting (1% threshold + 5min cooldown)"""
+        print("⚡ INSTANT price monitoring started - checking 60/min, alerting on 1%+ changes")
+        print(f"   Rate Limiting: 1% threshold + 5 minute cooldown per symbol")
         self.price_monitor_running = True
         
         while self.price_monitor_running:
@@ -515,32 +519,40 @@ class EnhancedTelegramBot:
                     await asyncio.sleep(1)
                     continue
                 
-                # Check if ANY prices have changed
+                # Check for SIGNIFICANT price changes with rate limiting
+                current_time = asyncio.get_event_loop().time()
                 changed_symbols = []
+                
                 for symbol_data in market_data:
                     symbol = symbol_data['symbol']
                     current_price = float(symbol_data['price'])
                     last_price = self.last_sent_prices.get(symbol)
+                    last_alert = self.last_alert_time.get(symbol, 0)
                     
                     if last_price is None:
-                        # First time seeing this symbol - save but don't alert
+                        # First time - save but don't alert
                         self.last_sent_prices[symbol] = current_price
-                    elif current_price != last_price:
-                        # Price changed - add to alert list
+                        continue
+                    
+                    # Calculate price change percentage
+                    price_change_pct = abs((current_price - last_price) / last_price)
+                    time_since_alert = current_time - last_alert
+                    
+                    # Alert if: 1% or more change AND cooldown expired
+                    if price_change_pct >= self.price_change_threshold and time_since_alert >= self.alert_cooldown_seconds:
                         changed_symbols.append({
                             'symbol': symbol,
                             'old_price': last_price,
                             'new_price': current_price
                         })
                         self.last_sent_prices[symbol] = current_price
+                        self.last_alert_time[symbol] = current_time
                 
-                # Send instant alerts for changed prices
+                # Send alerts for significant changes
                 if changed_symbols:
-                    # Generate signals for changed symbols
                     signals = self.signal_generator.analyze_all_symbols(market_data)
-                    
                     await self._send_instant_price_alerts(changed_symbols, signals, users)
-                    print(f"⚡ Instant alert: {len(changed_symbols)} price changes → sent to {len(users)} users")
+                    print(f"⚡ Alert: {len(changed_symbols)} symbols (1%+ change) → sent to {len(users)} users")
                 
                 await asyncio.sleep(1)  # Check every 1 second (60 times per minute)
                 

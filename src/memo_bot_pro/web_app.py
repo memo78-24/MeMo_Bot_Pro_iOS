@@ -471,9 +471,15 @@ def api_signals():
     except Exception as e:
         return jsonify({'error': str(e)}), 503
 
+def _check_admin_access():
+    """Simple admin check - requires admin token in header"""
+    admin_token = os.getenv('ADMIN_DASHBOARD_TOKEN', 'change_this_in_production')
+    provided_token = request.headers.get('X-Admin-Token', '')
+    return provided_token == admin_token
+
 @app.route('/api/bot/stats')
 def api_bot_stats():
-    """API endpoint for bot statistics"""
+    """API endpoint for bot statistics (read-only, no auth required)"""
     try:
         from .user_storage import UserStorage
         storage = UserStorage()
@@ -483,17 +489,20 @@ def api_bot_stats():
         return jsonify({
             'total_users': len(all_users),
             'subscribed_users': len(subscribed_users),
-            'instant_alerts_enabled': True,  # Always enabled in new implementation
-            'summary_enabled': True,  # Always enabled in new implementation
-            'check_frequency': 60,  # 60 checks per minute
-            'summary_interval': 7200  # 2 hours in seconds
+            'instant_alerts_enabled': True,
+            'summary_enabled': True,
+            'check_frequency': 60,
+            'summary_interval': 7200
         })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/bot/users')
 def api_bot_users():
-    """API endpoint for user list"""
+    """API endpoint for user list (admin only)"""
+    if not _check_admin_access():
+        return jsonify({'error': 'Unauthorized - admin access required'}), 401
+    
     try:
         from .user_storage import UserStorage
         storage = UserStorage()
@@ -504,16 +513,18 @@ def api_bot_users():
 
 @app.route('/api/bot/test-notification', methods=['POST'])
 def api_test_notification():
-    """API endpoint to trigger a test notification"""
+    """API endpoint to trigger a test notification (admin only)"""
+    if not _check_admin_access():
+        return jsonify({'error': 'Unauthorized - admin access required'}), 401
+    
     try:
-        # Create a flag file that the Telegram bot will check
         flag_file = '/tmp/memo_bot_test_notification.flag'
         with open(flag_file, 'w') as f:
             f.write('test_notification_requested')
         
         return jsonify({
             'status': 'success',
-            'message': 'Test notification request queued. Bot will send it on next check.'
+            'message': 'Test notification request queued.'
         })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
