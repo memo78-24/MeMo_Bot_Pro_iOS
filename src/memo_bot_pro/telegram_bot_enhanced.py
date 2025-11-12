@@ -669,7 +669,8 @@ class EnhancedTelegramBot:
             
             print("🚀 MeMo Bot Pro Enhanced Telegram Bot is running...")
             print("✅ Features: EN/AR support, Interactive menus, Auto signals, Reports")
-            print("🔔 Minute Updates: Enabled (every 60 seconds, no threshold)")
+            print("🔔 Price Change Alerts: Checking every 2 hours, sending only when prices change")
+            print("💡 Trading Signals: BUY/SELL/HOLD advice included with each update")
             print("👋 Welcome Messages: Checking inactive users every 10 minutes")
             print("📢 Admin Broadcast: /broadcast command available")
             print("Press Ctrl+C to stop")
