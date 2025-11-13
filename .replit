@@ -4,7 +4,7 @@ expertMode = true
 
 [nix]
 channel = "stable-25_05"
-packages = ["freetype", "glibcLocales"]
+packages = ["freetype", "glibcLocales", "deploy-rs"]
 
 [workflows]
 runButton = "Project"
@@ -37,7 +37,3 @@ run = ["bash", "start_production.sh"]
 [[ports]]
 localPort = 5000
 externalPort = 80
-
-[[ports]]
-localPort = 46639
-externalPort = 3000
