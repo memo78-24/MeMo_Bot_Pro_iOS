@@ -3,10 +3,21 @@
 ## Quick Start (3 Steps!)
 
 1. **Generate webhook secret** → Set environment variables
-2. **Click "Deploy"** → Choose "Autoscale"
+2. **Click "Deploy"** → Choose **"Reserved VM"** (required!)
 3. **Test your bot** → Send `/start` on Telegram
 
 Your bot will now run 24/7 even when your laptop is off! 🚀
+
+---
+
+## ⚠️ Important: Why Reserved VM is Required
+
+Your bot has **continuous background monitoring tasks** that run 24/7:
+- ⚡ **Price monitoring**: 60 checks per minute
+- 📊 **2-hour summaries**: Automated reports every 2 hours
+- 💓 **Heartbeat tracking**: Status updates every 60 seconds
+
+**Autoscale won't work** because it scales down to zero when idle, which would stop these background tasks. **Reserved VM** keeps your app running continuously, which is essential for crypto monitoring.
 
 ## Required Environment Variables
 
@@ -44,7 +55,7 @@ Copy the output and set it as environment variable.
 ### Step 1: First Deployment (Get Your URL)
 
 1. Click **"Deploy"** button
-2. Choose **"Autoscale"** (recommended!)
+2. Choose **"Reserved VM"** (IMPORTANT - Autoscale won't work!)
 3. Wait for deployment to complete
 4. **Copy your public URL** (e.g., `https://memo-bot-pro.replit.app`)
 
@@ -81,14 +92,20 @@ TELEGRAM_WEBHOOK_SECRET=<paste the secret you generated>
 
 **OLD (Had Problems)**:
 - Separate bot process using polling
-- Needed Reserved VM
+- Multiple process conflicts
 - Deployment kept failing
 
 **NEW (Works Perfect)**:
 - Bot runs inside web app via webhooks
-- Works with Autoscale
+- Single process architecture
 - Telegram pushes updates to your app
 - All features work: alerts, signals, profit calculator
+
+**Why Reserved VM?**:
+- Continuous background monitoring (60 price checks/min)
+- 2-hour automated summaries
+- Heartbeat tracking (60s intervals)
+- Can't scale to zero (monitoring must run 24/7)
 
 ---
 
@@ -135,16 +152,19 @@ curl https://your-app.replit.app/health
 
 ---
 
-## Cost Comparison
+## Cost Information
 
-**Autoscale** (Current):
-- Scales down when idle = SAVES MONEY
-- Scales up with traffic automatically
-- Perfect for crypto bot usage patterns
+**Reserved VM** (Required for your bot):
+- Always running 24/7 
+- Needed for continuous background monitoring
+- Predictable monthly cost
+- Essential for crypto price tracking (60 checks/min)
 
-**Reserved VM** (Old approach):
-- Always running 24/7 = Higher cost
-- Not needed with webhooks
+**Why not Autoscale?**:
+- Autoscale scales to zero when idle
+- Would stop price monitoring and alerts
+- Incompatible with 24/7 background tasks
+- Bot needs to always be running
 
 ---
 

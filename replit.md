@@ -27,7 +27,7 @@ No specific user preferences recorded yet.
 - **Translations**: Dedicated module for English and Arabic language support.
 - **Configuration**: Environment-based configuration with support for `MOCK_MODE`.
 - **Webhook Integration**: Telegram bot runs via webhooks inside Flask web app (no separate polling process), enabling Autoscale deployment with secret token security.
-- **Deployment**: Configured for Autoscale deployment using webhook-based Telegram integration (no background processes). Bot runs inside Flask web app via webhooks, enabling cost-effective autoscaling. Uses Gunicorn production server with single worker, webhook secret token security, automatic mock mode in deployment, and graceful error handling.
+- **Deployment**: Configured for Reserved VM deployment (required for 24/7 background monitoring tasks). Bot runs via webhooks inside Flask web app with continuous price monitoring (60/min), 2-hour summaries, and heartbeat tracking. Uses Gunicorn production server with single worker, webhook secret token security, automatic mock mode in deployment, and graceful error handling.
 
 ### Features
 - **Interactive Telegram Bot**: FIRST-TO-MARKET Arabic crypto trading assistant with dual language support, interactive menus, real-time signals, and user settings management. Includes instant price alerts and 2-hour summaries.
