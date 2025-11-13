@@ -140,7 +140,7 @@ class ProfitCalculator:
 📊 **Investment Summary**
 💵 Initial: {data['initial_investment_aed']:.2f} AED
 💎 Current: {data['current_value_aed']:.2f} AED
-{profit_emoji} Profit: {data['total_profit_aed']:+.2f} AED ({data['total_profit_percent']:+.2f}%)
+{profit_emoji} Profit: {data['total_profit_aed']:+.2f} AED
 
 📈 **Trading Activity**
 🔄 Total Trades: {data['total_trades']}
@@ -150,7 +150,6 @@ class ProfitCalculator:
 📅 **Weekly Projection**
 {weekly_emoji} Estimated Profit: {data['projected_weekly_profit_aed']:+.2f} AED
 💰 Final Value: {data['projected_weekly_value_aed']:.2f} AED
-📊 Weekly Return: {(data['projected_weekly_profit_aed']/data['initial_investment_aed']*100):+.2f}%
 
 ---
 **Top Performers:**
@@ -167,8 +166,7 @@ class ProfitCalculator:
             emoji = "🟢" if curr['profit_aed'] >= 0 else "🔴"
             short_name = curr['symbol'].replace('USDT', '')
             profit_val = curr['profit_aed']
-            profit_pct = curr['profit_percent']
-            report += f"\n{i}. {short_name}: {emoji} {profit_val:+.2f} AED ({profit_pct:+.2f}%)"
+            report += f"\n{i}. {short_name}: {emoji} {profit_val:+.2f} AED"
         
         return report
     
@@ -198,7 +196,7 @@ class ProfitCalculator:
 📊 **ملخص الاستثمار**
 💵 رأس المال: {to_arabic_num(initial_investment)} درهم
 💎 القيمة الحالية: {to_arabic_num(current_value)} درهم
-{profit_emoji} الربح: {to_arabic_num(total_profit)} درهم ({to_arabic_num(profit_percent)}%)
+{profit_emoji} الربح: {to_arabic_num(total_profit)} درهم
 
 📈 **نشاط التداول**
 🔄 إجمالي الصفقات: {to_arabic_num(total_trades)}
@@ -208,7 +206,6 @@ class ProfitCalculator:
 📅 **التوقعات الأسبوعية**
 {weekly_emoji} الربح المتوقع: {to_arabic_num(weekly_profit)} درهم
 💰 القيمة النهائية: {to_arabic_num(weekly_value)} درهم
-📊 العائد الأسبوعي: {to_arabic_num(weekly_return)}%
 
 ---
 **الأفضل أداءً:**
@@ -225,7 +222,6 @@ class ProfitCalculator:
             emoji = "🟢" if curr['profit_aed'] >= 0 else "🔴"
             short_name = curr['symbol'].replace('USDT', '')
             profit_val = f"{curr['profit_aed']:+.2f}"
-            profit_pct = f"{curr['profit_percent']:+.2f}"
-            report += f"\n{to_arabic_num(i)}. {short_name}: {emoji} {to_arabic_num(profit_val)} درهم ({to_arabic_num(profit_pct)}%)"
+            report += f"\n{to_arabic_num(i)}. {short_name}: {emoji} {to_arabic_num(profit_val)} درهم"
         
         return report

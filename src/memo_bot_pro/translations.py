@@ -2,7 +2,7 @@ TRANSLATIONS = {
     'en': {
         'welcome': "👋 Welcome to MeMo Bot Pro!\n\n"
                    "🤖 Your AI-powered Arabic crypto trading assistant.\n\n"
-                   "I provide real-time signals for the top 10 trending cryptocurrencies.\n\n"
+                   "I provide real-time signals for the top 5 trending cryptocurrencies.\n\n"
                    "Choose your language to continue:",
         'main_menu': "📊 Main Menu\n\nWhat would you like to do?",
         'signals': "💡 Trading Signals",
@@ -14,7 +14,7 @@ TRANSLATIONS = {
         'language': "🌐 Language",
         'english': "🇬🇧 English",
         'arabic': "🇸🇦 Arabic",
-        'top_10_currencies': "📊 Top 10 Trending Currencies",
+        'top_10_currencies': "📊 Top 5 Trending Currencies",
         'get_signals': "🔔 Get Latest Signals",
         'auto_signals': "🔄 Auto Signals",
         'daily_report': "📊 Daily Report",
@@ -114,7 +114,7 @@ TRANSLATIONS = {
 
 <b>Features:</b>
 • 💡 Real-time trading signals
-• 📊 Top 10 trending cryptocurrencies
+• 📊 Top 5 trending cryptocurrencies
 • 📈 Daily/Weekly/Monthly reports
 • 🔄 Auto signals
 • 🌐 English & Arabic support
@@ -138,7 +138,7 @@ Support: support@memobotpro.com""",
     'ar': {
         'welcome': "👋 مرحباً بك في ميمو بوت برو!\n\n"
                    "🤖 مساعدك الذكي للتداول في العملات الرقمية.\n\n"
-                   "أقدم لك إشارات فورية لأفضل ١٠ عملات رقمية رائجة.\n\n"
+                   "أقدم لك إشارات فورية لأفضل ٥ عملات رقمية رائجة.\n\n"
                    "اختر لغتك للمتابعة:",
         'main_menu': "📊 القائمة الرئيسية\n\nماذا تريد أن تفعل؟",
         'signals': "💡 إشارات التداول",
@@ -150,7 +150,7 @@ Support: support@memobotpro.com""",
         'language': "🌐 اللغة",
         'english': "🇬🇧 الإنجليزية",
         'arabic': "🇸🇦 العربية",
-        'top_10_currencies': "📊 أفضل ١٠ عملات رائجة",
+        'top_10_currencies': "📊 أفضل ٥ عملات رائجة",
         'get_signals': "🔔 احصل على آخر الإشارات",
         'auto_signals': "🔄 الإشارات التلقائية",
         'daily_report': "📊 التقرير اليومي",
