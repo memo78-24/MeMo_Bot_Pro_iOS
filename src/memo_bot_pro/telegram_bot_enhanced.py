@@ -979,9 +979,11 @@ class EnhancedTelegramBot:
             print("👋 Welcome Messages: Checking inactive users every 10 minutes")
             print("📢 Admin Broadcast: /broadcast command available")
             print("💓 Production Monitoring: Heartbeat enabled (60s interval)")
-            print("Press Ctrl+C to stop")
+            print("")
+            print("⚠️ NOTE: This bot runs via WEBHOOKS (not polling)")
+            print("   Run via web_app.py for webhook mode deployment")
             
-            await self.app.run_polling(allowed_updates=Update.ALL_TYPES)
+            await asyncio.gather(instant_monitor_task, summary_monitor_task, heartbeat_task)
 
         except KeyboardInterrupt:
             print("\n⚠️ Bot stopped by user")

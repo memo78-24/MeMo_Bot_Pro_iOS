@@ -122,10 +122,9 @@ class TelegramBot:
             app.add_handler(CommandHandler("account", account_command))
             app.add_handler(CommandHandler("help", help_command))
 
-            print("🚀 MeMo Bot Pro Telegram Bot is running...")
-            print("Press Ctrl+C to stop")
-            
-            await app.run_polling(allowed_updates=Update.ALL_TYPES)
+            print("🚀 MeMo Bot Pro Telegram Bot (Basic Version)")
+            print("⚠️ NOTE: This is the basic bot. For production, use telegram_bot_enhanced.py")
+            print("⚠️ Bot should run via WEBHOOKS through web_app.py, not polling")
 
         except ImportError:
             print("❌ Error: python-telegram-bot not installed")
