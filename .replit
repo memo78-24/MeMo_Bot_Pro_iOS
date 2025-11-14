@@ -37,3 +37,7 @@ run = ["bash", "start_production.sh"]
 [[ports]]
 localPort = 5000
 externalPort = 80
+
+[[ports]]
+localPort = 44913
+externalPort = 3000
