@@ -86,7 +86,7 @@ def get_or_create_client():
             _database = None
             _trading_commands = None
     
-    return _client, _signal_gen, _database
+    return _client, _signal_gen, _monitor, _database
 
 HTML_TEMPLATE = '''
 <!DOCTYPE html>
@@ -419,7 +419,7 @@ def index():
     
     # Development/local mode - try to use configured settings
     try:
-        client, signal_gen, _ = get_or_create_client()
+        client, signal_gen, _, _ = get_or_create_client()
         config = Config.from_env()
         
         # Wrap API calls in try-except
@@ -470,7 +470,7 @@ def monitor_dashboard():
 def api_monitor_health():
     """API endpoint for health monitoring"""
     try:
-        _, _, monitor = get_or_create_client()
+        _, _, monitor, _ = get_or_create_client()
         health_status = monitor.check_health()
         return jsonify(health_status)
     except Exception as e:
@@ -491,7 +491,7 @@ def api_monitor_acknowledge():
     try:
         data = request.get_json()
         alert_id = data.get('alert_id')
-        _, _, monitor = get_or_create_client()
+        _, _, monitor, _ = get_or_create_client()
         monitor.acknowledge_alert(alert_id)
         return jsonify({'status': 'acknowledged', 'alert_id': alert_id})
     except Exception as e:
@@ -505,7 +505,7 @@ def api_heartbeat():
         environment = data.get('environment', 'production')
         bot_info = data.get('bot_info', {})
         
-        _, _, monitor = get_or_create_client()
+        _, _, monitor, _ = get_or_create_client()
         monitor.record_heartbeat(environment)
         
         return jsonify({
@@ -520,7 +520,7 @@ def api_heartbeat():
 def api_production_status():
     """Get production and dev bot status"""
     try:
-        _, _, monitor = get_or_create_client()
+        _, _, monitor, _ = get_or_create_client()
         
         prod_status = monitor.check_production_status()
         dev_status = monitor.check_dev_status()
@@ -539,7 +539,7 @@ def api_production_status():
 def api_prices():
     """API endpoint for prices with error handling"""
     try:
-        client, _, _ = get_or_create_client()
+        client, _, _, _ = get_or_create_client()
         return jsonify({'prices': client.get_all_prices()})
     except Exception as e:
         return jsonify({'error': str(e)}), 503
@@ -548,7 +548,7 @@ def api_prices():
 def api_signals():
     """API endpoint for signals with error handling"""
     try:
-        _, signal_gen, _ = get_or_create_client()
+        _, signal_gen, _, _ = get_or_create_client()
         return jsonify({'signals': signal_gen.generate_signals()})
     except Exception as e:
         return jsonify({'error': str(e)}), 503
@@ -563,7 +563,7 @@ def _check_admin_access():
 def api_bot_stats():
     """API endpoint for bot statistics (read-only, no auth required)"""
     try:
-        _, _, database = get_or_create_client()
+        _, _, _, database = get_or_create_client()
         
         if database:
             all_users = database.get_all_users()
@@ -593,7 +593,7 @@ def api_bot_users():
         return jsonify({'error': 'Unauthorized - admin access required'}), 401
     
     try:
-        _, _, database = get_or_create_client()
+        _, _, _, database = get_or_create_client()
         
         if database:
             users = database.get_all_users()

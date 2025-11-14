@@ -66,30 +66,28 @@ class TradingCommands:
             )
     
     async def cmd_auto(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Toggle auto-trading ON/OFF"""
+        """Toggle auto-trading ON/OFF - CURRENTLY DISABLED (Coming Soon)"""
         user = update.effective_user
         user_settings = self.db.get_user(user.id)
         lang = user_settings.get('language', 'en') if user_settings else 'en'
         
-        current_status = user_settings.get('auto_trading', False) if user_settings else False
-        new_status = not current_status
+        # TODO: Implement full auto-trading logic with:
+        # - Scalping signal generation
+        # - Risk management (stop-loss, take-profit)
+        # - Position sizing based on account balance
+        # - Trade execution with proper error handling
         
-        self.db.toggle_auto_trading(user.id, new_status)
-        
-        if new_status:
-            text = get_text(lang, 'auto_trading_enabled')
-            emoji = "✅"
-        else:
-            text = get_text(lang, 'auto_trading_disabled')
-            emoji = "🔕"
+        text = "🚧 <b>Auto-Trading Feature</b>\n\n"
+        text += "⏳ This feature is currently under development.\n\n"
+        text += "Once completed, it will automatically:\n"
+        text += "• Monitor markets 24/7\n"
+        text += "• Execute scalping trades ($50 per trade)\n"
+        text += "• Follow strict risk management rules\n"
+        text += "• Target 3-5 trades per day\n\n"
+        text += "📌 For now, please use manual trading via /trade command.\n\n"
+        text += "Thank you for your patience! 🙏"
         
         keyboard = [
-            [
-                InlineKeyboardButton(
-                    f"{emoji} {get_text(lang, 'toggle_auto_trading')}",
-                    callback_data='toggle_auto_trading'
-                )
-            ],
             [
                 InlineKeyboardButton(
                     get_text(lang, 'back'),
