@@ -108,17 +108,21 @@ TRANSLATIONS = {
 <b>Available Commands:</b>
 /start - Start interacting with the bot
 /menu - Show main menu
-/signals - Get trading signals
+/signals - Get scalping signals
+/balance - Check Binance wallet
+/trade - Buy/Sell cryptocurrencies
+/history - View trade history
+/auto - Toggle auto-trading ON/OFF
+/profit - Profit calculator
 /reports - View reports
-/balance - Check your Binance wallet balance
-/profit - View profit calculator
-/settings - Your account settings
+/settings - Account settings
 
 <b>Features:</b>
-• 💡 Real-time trading signals
-• 📊 Top 5 trending cryptocurrencies
-• 📈 Daily/Weekly/Monthly reports
-• 💰 Live Binance balance checking
+• ⚡ Sharp scalping signals with entry/exit prices
+• 💰 Live Binance balance & trading
+• 🤖 Automated trading (ON/OFF toggle)
+• 📊 Top 5 cryptocurrencies
+• 📈 Trade history & profit tracking
 • 🔄 Auto signals
 • 🌐 English & Arabic support
 
@@ -144,6 +148,53 @@ Support: support@memobotpro.com""",
         'balance_updated': "Updated in real-time",
         'no_balance': "❌ No balance found in your Binance account.",
         'error_balance': "Error fetching balance. Please try again later.",
+        
+        # Trading Commands
+        'trade': "💰 Trade",
+        'buy': "🟢 Buy",
+        'sell': "🔴 Sell",
+        'trade_history': "📜 Trade History",
+        'auto_trading': "🤖 Auto Trading",
+        'trading_settings': "⚙️ Trading Settings",
+        
+        # Auto Trading
+        'auto_trading_on': "✅ Auto-Trading is ON\n\nThe bot will automatically execute BUY signals with confidence ≥75%.",
+        'auto_trading_off': "⚠️ Auto-Trading is OFF\n\nYou will receive signals but trades won't be executed automatically.",
+        'auto_trading_enabled': "✅ Auto-Trading ENABLED!\n\nBot will now execute trades automatically based on strong signals (confidence ≥75%).",
+        'auto_trading_disabled': "🔕 Auto-Trading DISABLED\n\nYou will only receive signal notifications. No automatic trades will be executed.",
+        'toggle_auto_trading': "Toggle Auto Trading",
+        
+        # Trade Execution
+        'confirm_buy': "Confirm Buy Order",
+        'confirm_sell': "Confirm Sell Order",
+        'cancel_trade': "❌ Cancel",
+        'trade_confirmed': "✅ Trade Executed Successfully!",
+        'trade_cancelled': "❌ Trade Cancelled",
+        'trade_failed': "⚠️ Trade Failed",
+        'insufficient_balance': "❌ Insufficient balance to execute this trade.",
+        
+        # Trade Details
+        'trade_amount': "Trade Amount",
+        'entry_price': "Entry Price",
+        'exit_target': "Exit Target",
+        'stop_loss': "Stop Loss",
+        'profit_estimate': "Profit Estimate",
+        'confidence_level': "Confidence",
+        'time_window': "Time Window",
+        'minutes': "minutes",
+        
+        # Trade History
+        'no_trades_yet': "📭 No trades yet.\n\nStart trading to see your history here!",
+        'recent_trades': "📜 Recent Trades",
+        'total_profit_loss': "Total Profit/Loss",
+        'trade_count': "Total Trades",
+        'win_rate': "Win Rate",
+        
+        # Scalping Signals
+        'scalping_signals': "⚡ Scalping Signals",
+        'sharp_entry': "Sharp Entry Point",
+        'quick_profit': "Quick Profit Target",
+        'tight_stop': "Tight Stop Loss",
     },
     'ar': {
         'welcome': "👋 مرحباً بك في ميمو بوت برو!\n\n"
@@ -254,17 +305,21 @@ Support: support@memobotpro.com""",
 <b>الأوامر المتاحة:</b>
 /start - ابدأ التفاعل مع البوت
 /menu - عرض القائمة الرئيسية
-/signals - احصل على إشارات التداول
+/signals - احصل على إشارات السكالبينج
+/balance - تحقق من محفظة Binance
+/trade - شراء/بيع العملات الرقمية
+/history - عرض سجل التداولات
+/auto - تبديل التداول التلقائي تشغيل/إيقاف
+/profit - حاسبة الأرباح
 /reports - عرض التقارير
-/balance - تحقق من رصيد محفظة Binance
-/profit - عرض حاسبة الأرباح
-/settings - إعدادات حسابك
+/settings - إعدادات الحساب
 
 <b>الميزات:</b>
-• 💡 إشارات تداول فورية
-• 📊 تتبع أفضل ٥ عملات رقمية
-• 📈 تقارير يومية/أسبوعية/شهرية
-• 💰 فحص رصيد Binance المباشر
+• ⚡ إشارات سكالبينج حادة مع أسعار الدخول/الخروج
+• 💰 رصيد Binance المباشر والتداول
+• 🤖 التداول الآلي (تشغيل/إيقاف)
+• 📊 أفضل ٥ عملات رقمية
+• 📈 سجل التداولات وتتبع الأرباح
 • 🔄 إشارات تلقائية
 • 🌐 دعم اللغتين العربية والإنجليزية
 
@@ -290,6 +345,53 @@ Support: support@memobotpro.com""",
         'balance_updated': "محدث في الوقت الفعلي",
         'no_balance': "❌ لم يتم العثور على رصيد في حساب Binance الخاص بك.",
         'error_balance': "خطأ في جلب الرصيد. الرجاء المحاولة مرة أخرى لاحقاً.",
+        
+        # Trading Commands
+        'trade': "💰 تداول",
+        'buy': "🟢 شراء",
+        'sell': "🔴 بيع",
+        'trade_history': "📜 سجل التداولات",
+        'auto_trading': "🤖 التداول التلقائي",
+        'trading_settings': "⚙️ إعدادات التداول",
+        
+        # Auto Trading
+        'auto_trading_on': "✅ التداول التلقائي مفعّل\n\nسيقوم البوت تلقائياً بتنفيذ إشارات الشراء ذات الثقة ≥٧٥٪.",
+        'auto_trading_off': "⚠️ التداول التلقائي معطّل\n\nستتلقى الإشارات لكن لن يتم تنفيذ الصفقات تلقائياً.",
+        'auto_trading_enabled': "✅ تم تفعيل التداول التلقائي!\n\nسينفذ البوت الآن الصفقات تلقائياً بناءً على الإشارات القوية (ثقة ≥٧٥٪).",
+        'auto_trading_disabled': "🔕 تم تعطيل التداول التلقائي\n\nستتلقى فقط إشعارات الإشارات. لن يتم تنفيذ أي صفقات تلقائياً.",
+        'toggle_auto_trading': "تبديل التداول التلقائي",
+        
+        # Trade Execution
+        'confirm_buy': "تأكيد أمر الشراء",
+        'confirm_sell': "تأكيد أمر البيع",
+        'cancel_trade': "❌ إلغاء",
+        'trade_confirmed': "✅ تم تنفيذ الصفقة بنجاح!",
+        'trade_cancelled': "❌ تم إلغاء الصفقة",
+        'trade_failed': "⚠️ فشل تنفيذ الصفقة",
+        'insufficient_balance': "❌ رصيد غير كافٍ لتنفيذ هذه الصفقة.",
+        
+        # Trade Details
+        'trade_amount': "مبلغ الصفقة",
+        'entry_price': "سعر الدخول",
+        'exit_target': "هدف الخروج",
+        'stop_loss': "وقف الخسارة",
+        'profit_estimate': "الربح المتوقع",
+        'confidence_level': "الثقة",
+        'time_window': "النافذة الزمنية",
+        'minutes': "دقيقة",
+        
+        # Trade History
+        'no_trades_yet': "📭 لا توجد صفقات بعد.\n\nابدأ التداول لترى سجلك هنا!",
+        'recent_trades': "📜 الصفقات الأخيرة",
+        'total_profit_loss': "إجمالي الربح/الخسارة",
+        'trade_count': "إجمالي الصفقات",
+        'win_rate': "نسبة النجاح",
+        
+        # Scalping Signals
+        'scalping_signals': "⚡ إشارات السكالبينج",
+        'sharp_entry': "نقطة دخول حادة",
+        'quick_profit': "هدف ربح سريع",
+        'tight_stop': "وقف خسارة ضيق",
     }
 }
 

@@ -2,8 +2,11 @@ from flask import Flask, render_template_string, jsonify, request, send_from_dir
 from .config import Config
 from .binance_client import BinanceClient
 from .signal_generator import SignalGenerator
+from .scalping_signals import ScalpingSignalGenerator
 from .monitor import BotHealthMonitor
 from .telegram_bot_enhanced import EnhancedTelegramBot
+from .database import Database
+from .trading_commands import TradingCommands
 import time
 import os
 import asyncio
@@ -18,6 +21,9 @@ app = Flask(__name__, template_folder='templates')
 # Global client instances (lazy initialization)
 _client = None
 _signal_gen = None
+_scalping_signals = None
+_database = None
+_trading_commands = None
 _last_error = None
 _monitor = None
 _telegram_bot = None
@@ -32,7 +38,7 @@ logger = logging.getLogger(__name__)
 
 def get_or_create_client():
     """Lazy initialization of Binance client with error handling"""
-    global _client, _signal_gen, _last_error, _monitor
+    global _client, _signal_gen, _scalping_signals, _database, _trading_commands, _last_error, _monitor
     
     if _client is None:
         try:
@@ -48,7 +54,25 @@ def get_or_create_client():
                 mock=mock_mode
             )
             _signal_gen = SignalGenerator(_client)
+            _scalping_signals = ScalpingSignalGenerator(_client)
             _monitor = BotHealthMonitor(config)
+            
+            # Initialize database (with fallback)
+            try:
+                _database = Database()
+                logger.info("✅ Database initialized successfully")
+            except Exception as db_error:
+                logger.warning(f"⚠️ Database initialization failed: {db_error}")
+                logger.warning("Trading features will be disabled")
+                _database = None
+            
+            # Initialize trading commands if database is available
+            if _database:
+                _trading_commands = TradingCommands(_client, _database)
+                logger.info("✅ Trading commands initialized")
+            else:
+                _trading_commands = None
+            
             _last_error = None
         except Exception as e:
             _last_error = str(e)
@@ -56,7 +80,10 @@ def get_or_create_client():
             config = Config.from_env()
             _client = BinanceClient(mock=True)
             _signal_gen = SignalGenerator(_client)
+            _scalping_signals = ScalpingSignalGenerator(_client)
             _monitor = BotHealthMonitor(config)
+            _database = None
+            _trading_commands = None
     
     return _client, _signal_gen, _monitor
 
@@ -535,10 +562,17 @@ def _check_admin_access():
 def api_bot_stats():
     """API endpoint for bot statistics (read-only, no auth required)"""
     try:
-        from .user_storage import UserStorage
-        storage = UserStorage()
-        all_users = storage.get_all_users()
-        subscribed_users = storage.get_all_users_with_auto_signals()
+        _, _, database = get_or_create_client()
+        
+        if database:
+            all_users = database.get_all_users()
+            subscribed_users = database.get_users_with_auto_signals()
+        else:
+            # Fallback to UserStorage if database unavailable
+            from .user_storage import UserStorage
+            storage = UserStorage()
+            all_users = storage.get_all_users()
+            subscribed_users = storage.get_all_users_with_auto_signals()
         
         return jsonify({
             'total_users': len(all_users),
@@ -558,9 +592,16 @@ def api_bot_users():
         return jsonify({'error': 'Unauthorized - admin access required'}), 401
     
     try:
-        from .user_storage import UserStorage
-        storage = UserStorage()
-        users = storage.get_all_users()
+        _, _, database = get_or_create_client()
+        
+        if database:
+            users = database.get_all_users()
+        else:
+            # Fallback to UserStorage if database unavailable
+            from .user_storage import UserStorage
+            storage = UserStorage()
+            users = storage.get_all_users()
+        
         return jsonify({'users': users})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -646,7 +687,7 @@ async def _start_monitoring_tasks(bot_instance):
 
 def init_telegram_bot_webhook():
     """Initialize Telegram bot in webhook mode (no polling)"""
-    global _telegram_bot, _telegram_app, _bot_initialized, _bot_loop, _bot_thread
+    global _telegram_bot, _telegram_app, _bot_initialized, _bot_loop, _bot_thread, _client, _database, _trading_commands
     
     if _bot_initialized:
         logger.info("Telegram bot already initialized")
@@ -661,8 +702,11 @@ def init_telegram_bot_webhook():
         
         logger.info("🤖 Initializing Telegram bot in webhook mode...")
         
-        # Create bot instance
-        _telegram_bot = EnhancedTelegramBot(config)
+        # Initialize all dependencies
+        get_or_create_client()
+        
+        # Create bot instance with injected dependencies
+        _telegram_bot = EnhancedTelegramBot(config, _client, _database, _trading_commands)
         
         # Create new event loop for bot
         _bot_loop = asyncio.new_event_loop()
@@ -692,6 +736,23 @@ def init_telegram_bot_webhook():
             app.add_handler(CommandHandler("myid", _telegram_bot.myid_command))
             app.add_handler(CommandHandler("admin", _telegram_bot.admin_command))
             app.add_handler(CommandHandler("broadcast", _telegram_bot.broadcast_command))
+            
+            # Trading commands (only if database/trading_commands available)
+            if _trading_commands and _database:
+                app.add_handler(CommandHandler("balance", _telegram_bot.balance_command))
+                app.add_handler(CommandHandler("trade", _trading_commands.cmd_trade))
+                app.add_handler(CommandHandler("auto", _trading_commands.cmd_auto))
+                app.add_handler(CommandHandler("history", _trading_commands.cmd_history))
+                
+                # Register trading callback handlers
+                for callback_pattern, handler in _trading_commands.get_handlers():
+                    app.add_handler(CallbackQueryHandler(handler, pattern=f'^{callback_pattern}'))
+                
+                logger.info("✅ Registered trading commands: /balance, /trade, /auto, /history")
+            else:
+                logger.warning("⚠️ Trading commands not registered (database unavailable)")
+            
+            # Main button callback handler (must be last to catch all other callbacks)
             app.add_handler(CallbackQueryHandler(_telegram_bot.button_callback))
             
             # Initialize application
@@ -707,6 +768,32 @@ def init_telegram_bot_webhook():
                 minutes=10,
                 id='inactive_user_check'
             )
+            
+            # Add auto-trading scheduler if database and trading_commands available
+            if _database and _trading_commands:
+                async def auto_trading_task():
+                    """Background task to execute auto-trading for users with auto_trading enabled"""
+                    try:
+                        users = _database.get_users_with_auto_trading()
+                        if users:
+                            logger.info(f"🤖 Auto-trading check: {len(users)} users with auto-trading enabled")
+                            # TODO: Implement actual auto-trading logic
+                            # - Get scalping signals
+                            # - Execute trades for users with sufficient balance
+                            # - Respect risk management settings
+                        else:
+                            logger.debug("🤖 Auto-trading check: No users with auto-trading enabled")
+                    except Exception as e:
+                        logger.error(f"❌ Auto-trading task error: {e}", exc_info=True)
+                
+                _telegram_bot.scheduler.add_job(
+                    auto_trading_task,
+                    'interval',
+                    minutes=15,  # Check every 15 minutes for scalping opportunities
+                    id='auto_trading_check'
+                )
+                logger.info("✅ Auto-trading scheduler enabled (15-minute interval)")
+            
             _telegram_bot.scheduler.start()
             logger.info("✅ Started APScheduler for background tasks")
             

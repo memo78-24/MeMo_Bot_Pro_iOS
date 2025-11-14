@@ -17,22 +17,39 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from .config import Config
 from .binance_client import BinanceClient
 from .signal_generator import SignalGenerator
+from .scalping_signals import ScalpingSignalGenerator
 from .translations import get_text, to_arabic_numerals
+from .database import Database
+from .trading_commands import TradingCommands
 from .user_storage import UserStorage
 from .reports import ReportGenerator
 from .profit_calculator import ProfitCalculator
 
 
 class EnhancedTelegramBot:
-    def __init__(self, config: Config):
+    def __init__(self, config: Config, binance_client: BinanceClient = None, database: Database = None, trading_commands: TradingCommands = None):
         self.config = config
-        self.binance_client = BinanceClient(
-            api_key=config.binance_api_key,
-            api_secret=config.binance_api_secret,
-            mock=config.mock_mode
-        )
+        
+        # Use injected dependencies or create new ones
+        if binance_client:
+            self.binance_client = binance_client
+        else:
+            self.binance_client = BinanceClient(
+                api_key=config.binance_api_key,
+                api_secret=config.binance_api_secret,
+                mock=config.mock_mode
+            )
+        
         self.signal_generator = SignalGenerator(self.binance_client)
-        self.user_storage = UserStorage()
+        self.scalping_signals = ScalpingSignalGenerator(self.binance_client)
+        
+        # Use injected database or fallback to UserStorage for backward compatibility
+        self.database = database
+        self.user_storage = UserStorage() if not database else None
+        
+        # Use injected trading commands or fallback to None
+        self.trading_commands = trading_commands
+        
         self.report_generator = ReportGenerator(self.binance_client, self.signal_generator)
         self.profit_calculator = ProfitCalculator()
         self.scheduler = AsyncIOScheduler()
@@ -49,6 +66,58 @@ class EnhancedTelegramBot:
     def is_admin(self, user_id: int) -> bool:
         """Check if a user is an admin"""
         return self.config.is_admin(user_id)
+    
+    def _get_user_settings(self, user_id: int) -> dict:
+        """Get user settings from database or user_storage"""
+        if self.database:
+            user = self.database.get_user(user_id)
+            return user if user else {'language': 'en', 'auto_signals': True}
+        else:
+            return self.user_storage.get_user_settings(user_id) or {'language': 'en', 'auto_signals': True}
+    
+    def _save_user_settings(self, user_id: int, username: str, settings: dict):
+        """Save user settings to database or user_storage"""
+        if self.database:
+            self.database.save_user(user_id, username, settings)
+        else:
+            self.user_storage.save_user_settings(user_id, username, settings)
+    
+    def _update_last_activity(self, user_id: int):
+        """Update user activity in database or user_storage"""
+        if self.database:
+            self.database.update_last_activity(user_id)
+        else:
+            self.user_storage.update_last_activity(user_id)
+    
+    def _get_all_users_with_auto_signals(self):
+        """Get users with auto signals enabled from database or user_storage"""
+        if self.database:
+            users = self.database.get_users_with_auto_signals()
+            return [{'user_id': u['user_id'], 'username': u['username'], 'language': u['language']} for u in users]
+        else:
+            return self.user_storage.get_all_users_with_auto_signals()
+    
+    def _get_all_users(self):
+        """Get all users from database or user_storage"""
+        if self.database:
+            users = self.database.get_all_users()
+            return [{'user_id': u['user_id'], 'username': u['username'], 'language': u['language'], 'auto_signals': u['auto_signals']} for u in users]
+        else:
+            return self.user_storage.get_all_users()
+    
+    def _get_inactive_users(self, hours=1):
+        """Get inactive users from database or user_storage"""
+        if self.database:
+            return self.database.get_inactive_users(hours=hours)
+        else:
+            return self.user_storage.get_inactive_users(hours=hours)
+    
+    def _update_last_welcome(self, user_id: int):
+        """Update last welcome timestamp in database or user_storage"""
+        if self.database:
+            self.database.update_last_welcome(user_id)
+        else:
+            self.user_storage.update_last_welcome(user_id)
     
     def _get_short_currency_name(self, symbol: str) -> str:
         """Convert BTCUSDT to BTC"""
@@ -78,13 +147,13 @@ class EnhancedTelegramBot:
         return f"https://www.binance.com/en/trade/{short_name}_USDT"
 
     def _get_user_lang(self, user_id: int) -> str:
-        settings = self.user_storage.get_user_settings(user_id)
-        return settings['language'] if settings else 'en'
+        settings = self._get_user_settings(user_id)
+        return settings.get('language', 'en')
     
     def _track_user_activity(self, user_id: int):
         """Track user activity timestamp"""
         try:
-            self.user_storage.update_last_activity(user_id)
+            self._update_last_activity(user_id)
         except Exception as e:
             print(f"Error tracking activity for user {user_id}: {e}")
 
@@ -146,16 +215,16 @@ class EnhancedTelegramBot:
         self._track_user_activity(user_id)
         
         lang_temp = 'en'  # Default for fallback username
-        settings = self.user_storage.get_user_settings(user_id)
+        settings = self._get_user_settings(user_id)
         if settings:
-            lang_temp = settings['language']
+            lang_temp = settings.get('language', 'en')
         username = user.username or user.first_name or get_text(lang_temp, 'fallback_username')
         
         if not settings:
-            self.user_storage.save_user_settings(user_id, username, {'language': 'en'})
+            self._save_user_settings(user_id, username, {'language': 'en'})
             lang = 'en'
         else:
-            lang = settings['language']
+            lang = settings.get('language', 'en')
         
         # Show admin status if user is admin
         welcome_msg = get_text(lang, 'welcome')
@@ -191,7 +260,7 @@ class EnhancedTelegramBot:
 
         if data.startswith('lang_'):
             lang = data.split('_')[1]
-            self.user_storage.save_user_settings(user_id, username, {'language': lang})
+            self._save_user_settings(user_id, username, {'language': lang})
             
             await query.edit_message_text(
                 get_text(lang, 'language_changed'),
@@ -263,11 +332,11 @@ class EnhancedTelegramBot:
 
         elif data == 'toggle_auto':
             lang = self._get_user_lang(user_id)
-            settings = self.user_storage.get_user_settings(user_id)
+            settings = self._get_user_settings(user_id)
             current = settings.get('auto_signals', False) if settings else False
             new_value = not current
             
-            self.user_storage.save_user_settings(user_id, username, {'auto_signals': new_value, 'language': lang})
+            self._save_user_settings(user_id, username, {'auto_signals': new_value, 'language': lang})
             
             msg = get_text(lang, 'auto_signals_on' if new_value else 'auto_signals_off')
             await query.answer(msg, show_alert=True)
@@ -287,7 +356,7 @@ class EnhancedTelegramBot:
 
         elif data == 'settings_notif':
             lang = self._get_user_lang(user_id)
-            settings = self.user_storage.get_user_settings(user_id)
+            settings = self._get_user_settings(user_id)
             auto_enabled = settings.get('auto_signals', False) if settings else False
             
             status = get_text(lang, 'auto_signals_on' if auto_enabled else 'auto_signals_off')
@@ -515,7 +584,7 @@ class EnhancedTelegramBot:
         broadcast_text = ' '.join(context.args)
         
         # Get all users
-        all_users = self.user_storage.get_all_users()
+        all_users = self._get_all_users()
         sent_count = 0
         failed_count = 0
         
@@ -559,7 +628,7 @@ class EnhancedTelegramBot:
             return
         
         # Get stats
-        all_users = self.user_storage.get_all_users()
+        all_users = self._get_all_users()
         total_users = len(all_users)
         admin_count = len(self.config.admin_user_ids)
         
@@ -625,7 +694,7 @@ class EnhancedTelegramBot:
                     continue
                 
                 # Get subscribed users
-                users = self.user_storage.get_all_users_with_auto_signals()
+                users = self._get_all_users_with_auto_signals()
                 
                 if not users:
                     await asyncio.sleep(1)
@@ -704,7 +773,7 @@ class EnhancedTelegramBot:
                     continue
                 
                 # Get subscribed users
-                users = self.user_storage.get_all_users_with_auto_signals()
+                users = self._get_all_users_with_auto_signals()
                 
                 if not users:
                     continue
@@ -913,7 +982,7 @@ class EnhancedTelegramBot:
             if not self.app:
                 return
                 
-            inactive_users = self.user_storage.get_inactive_users(hours=1)
+            inactive_users = self._get_inactive_users(hours=1)
             
             if not inactive_users:
                 return
@@ -934,7 +1003,7 @@ class EnhancedTelegramBot:
                     )
                     
                     # Update last welcome timestamp
-                    self.user_storage.update_last_welcome(user_id)
+                    self._update_last_welcome(user_id)
                     
                     print(f"📬 Welcome message sent to inactive user {user_id}")
                     await asyncio.sleep(0.3)
