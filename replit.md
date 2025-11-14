@@ -23,14 +23,18 @@ No specific user preferences recorded yet.
 ### Technical Implementations
 - **Binance Client**: Abstracts Binance API interactions, supporting mock mode for testing and focusing on the top 10 trending currencies.
 - **Signal Generator**: Analyzes price data to generate trading recommendations.
-- **User Storage**: Utilizes Excel (`openpyxl`) for storing user settings and preferences.
-- **Translations**: Dedicated module for English and Arabic language support.
+- **Scalping Signals**: Advanced signal generator with entry/exit prices, stop-loss, and take-profit calculations for $50 scalping trades targeting $100 daily profit.
+- **Database Layer**: PostgreSQL database with adapter pattern for graceful fallback to Excel-based UserStorage. Includes users, trade_history, and trading_config tables. Automatic fallback when DATABASE_URL unavailable.
+- **Trading Commands**: Real-time Binance wallet integration with /balance, /trade, /history commands. Manual buy/sell execution with risk management. Auto-trading feature disabled (coming soon).
+- **User Storage**: Dual-layer system - PostgreSQL (production) with Excel (`openpyxl`) fallback for development/testing.
+- **Translations**: Dedicated module for English and Arabic language support, including all trading features.
 - **Configuration**: Environment-based configuration with support for `MOCK_MODE`.
 - **Webhook Integration**: Telegram bot runs via webhooks inside Flask web app (no separate polling process), enabling Autoscale deployment with secret token security.
 - **Deployment**: Configured for Reserved VM deployment (required for 24/7 background monitoring tasks). Bot runs via webhooks inside Flask web app with continuous price monitoring (60/min), 2-hour summaries, and heartbeat tracking. Uses Gunicorn production server with single worker, webhook secret token security, automatic mock mode in deployment, and graceful error handling.
 
 ### Features
 - **Interactive Telegram Bot**: FIRST-TO-MARKET Arabic crypto trading assistant with dual language support, interactive menus, real-time signals, and user settings management. Includes instant price alerts and 2-hour summaries.
+- **Live Trading System**: Real Binance integration with /balance showing wallet holdings in USDT/AED, /trade for manual buy/sell execution with confirmation, /history for trade tracking, and /auto command (feature coming soon).
 - **Trading Profit Calculator**: Real-time profit/loss tracking for 1000 AED investment across 10 currencies. Shows current value, weekly projections, top performers, and trading activity metrics. Accessible via /profit command or main menu.
 - **Production Monitoring System**: 24/7 deployment health tracking with:
   - Heartbeat monitoring (60-second intervals) for both development and production environments
@@ -48,11 +52,19 @@ No specific user preferences recorded yet.
 
 ## External Dependencies
 - **python-binance**: Binance API wrapper for market data and trading.
+- **psycopg2-binary**: PostgreSQL database adapter for Python.
 - **requests**: HTTP library for making web requests.
 - **python-telegram-bot**: Framework for building the Telegram bot.
 - **python-dotenv**: Manages environment variables.
 - **flask**: Web framework for the dashboard.
 - **gunicorn**: Production WSGI server for deployment.
-- **openpyxl**: Used for Excel-based user settings storage.
+- **openpyxl**: Used for Excel-based user settings storage fallback.
 - **nest-asyncio**: Enables nested event loops for concurrent operations.
 - **APScheduler**: Used for scheduling background tasks like auto-notifications.
+
+## Recent Changes (November 2024)
+- **PostgreSQL Migration**: Migrated from Excel-based storage to PostgreSQL with graceful fallback. Includes adapter pattern in EnhancedTelegramBot for seamless switching.
+- **Trading System Integration**: Added /balance, /trade, /history commands with real Binance API integration. Trade history and profit/loss tracking stored in database.
+- **Scalping Signals**: Implemented advanced signal generator with entry/exit prices, stop-loss (0.5%), and take-profit (1.5%) calculations.
+- **Production Hardening**: Database initialization with graceful fallback, error handling in all API endpoints, conditional trading command registration.
+- **Auto-Trading Placeholder**: Auto-trading scheduler infrastructure in place, feature disabled with "coming soon" message until full implementation.

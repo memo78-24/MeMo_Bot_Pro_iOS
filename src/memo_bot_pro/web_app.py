@@ -37,7 +37,15 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 def get_or_create_client():
-    """Lazy initialization of Binance client with error handling"""
+    """Lazy initialization of Binance client with error handling
+    
+    NOTE: This function sets module-level globals (_client, _signal_gen, _database, 
+    _trading_commands, _monitor) intentionally to allow access throughout the module.
+    Returns a subset of these for backward compatibility with existing callers.
+    
+    Returns:
+        tuple: (_client, _signal_gen, _monitor, _database)
+    """
     global _client, _signal_gen, _scalping_signals, _database, _trading_commands, _last_error, _monitor
     
     if _client is None:
