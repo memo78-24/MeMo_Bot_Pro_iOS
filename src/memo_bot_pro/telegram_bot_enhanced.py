@@ -412,6 +412,64 @@ class EnhancedTelegramBot:
             reply_markup=self._get_main_menu_keyboard(lang)
         )
     
+    async def balance_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Show Binance account balance"""
+        user_id = update.effective_user.id
+        self._track_user_activity(user_id)
+        lang = self._get_user_lang(user_id)
+        
+        try:
+            balances = self.binance_client.get_balance()
+            
+            if not balances:
+                await update.message.reply_text(
+                    get_text(lang, 'no_balance'),
+                    parse_mode='HTML',
+                    reply_markup=self._get_main_menu_keyboard(lang)
+                )
+                return
+            
+            total_usdt = 0.0
+            balance_lines = []
+            
+            for asset, balance_info in balances.items():
+                amount = balance_info['total']
+                usdt_value = self.binance_client.get_asset_value_in_usdt(asset, amount)
+                total_usdt += usdt_value
+                
+                if usdt_value >= 1:
+                    aed_value = usdt_value * 3.67
+                    emoji = "💵" if asset == "USDT" else "🪙"
+                    balance_lines.append(
+                        f"{emoji} <b>{asset}</b>: {amount:.4f} ≈ {usdt_value:.2f} USDT ({aed_value:.2f} AED)"
+                    )
+            
+            total_aed = total_usdt * 3.67
+            
+            message = f"""
+💰 <b>{get_text(lang, 'wallet_balance')}</b>
+
+{chr(10).join(balance_lines)}
+
+━━━━━━━━━━━━━━━━━
+💎 <b>{get_text(lang, 'total_value')}</b>
+💵 {total_usdt:.2f} USDT
+🇦🇪 {total_aed:.2f} AED
+
+<i>{get_text(lang, 'balance_updated')}</i>
+"""
+            
+            message = to_arabic_numerals(message, lang)
+            await update.message.reply_text(message, parse_mode='HTML', reply_markup=self._get_main_menu_keyboard(lang))
+            
+        except Exception as e:
+            print(f"Error getting balance: {e}")
+            await update.message.reply_text(
+                f"❌ {get_text(lang, 'error_balance')}",
+                parse_mode='HTML',
+                reply_markup=self._get_main_menu_keyboard(lang)
+            )
+    
     async def myid_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Show user their Telegram ID"""
         user = update.effective_user
@@ -952,6 +1010,7 @@ class EnhancedTelegramBot:
             self.app.add_handler(CommandHandler("reports", self.reports_command))
             self.app.add_handler(CommandHandler("settings", self.settings_command))
             self.app.add_handler(CommandHandler("profit", self.profit_command))
+            self.app.add_handler(CommandHandler("balance", self.balance_command))
             self.app.add_handler(CommandHandler("myid", self.myid_command))
             self.app.add_handler(CommandHandler("admin", self.admin_command))
             self.app.add_handler(CommandHandler("broadcast", self.broadcast_command))

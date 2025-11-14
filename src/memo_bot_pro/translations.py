@@ -110,12 +110,15 @@ TRANSLATIONS = {
 /menu - Show main menu
 /signals - Get trading signals
 /reports - View reports
+/balance - Check your Binance wallet balance
+/profit - View profit calculator
 /settings - Your account settings
 
 <b>Features:</b>
 • 💡 Real-time trading signals
 • 📊 Top 5 trending cryptocurrencies
 • 📈 Daily/Weekly/Monthly reports
+• 💰 Live Binance balance checking
 • 🔄 Auto signals
 • 🌐 English & Arabic support
 
@@ -134,6 +137,13 @@ Support: support@memobotpro.com""",
         'broadcast_from_admin': "Admin Broadcast",
         'broadcast_sent': "Sent",
         'broadcast_failed': "Failed",
+        
+        # Balance and Trading
+        'wallet_balance': "Wallet Balance",
+        'total_value': "Total Value",
+        'balance_updated': "Updated in real-time",
+        'no_balance': "❌ No balance found in your Binance account.",
+        'error_balance': "Error fetching balance. Please try again later.",
     },
     'ar': {
         'welcome': "👋 مرحباً بك في ميمو بوت برو!\n\n"
@@ -246,12 +256,15 @@ Support: support@memobotpro.com""",
 /menu - عرض القائمة الرئيسية
 /signals - احصل على إشارات التداول
 /reports - عرض التقارير
+/balance - تحقق من رصيد محفظة Binance
+/profit - عرض حاسبة الأرباح
 /settings - إعدادات حسابك
 
 <b>الميزات:</b>
 • 💡 إشارات تداول فورية
-• 📊 تتبع أفضل ١٠ عملات رقمية
+• 📊 تتبع أفضل ٥ عملات رقمية
 • 📈 تقارير يومية/أسبوعية/شهرية
+• 💰 فحص رصيد Binance المباشر
 • 🔄 إشارات تلقائية
 • 🌐 دعم اللغتين العربية والإنجليزية
 
@@ -270,6 +283,13 @@ Support: support@memobotpro.com""",
         'broadcast_from_admin': "بث من المشرف",
         'broadcast_sent': "تم الإرسال",
         'broadcast_failed': "فشل",
+        
+        # Balance and Trading
+        'wallet_balance': "رصيد المحفظة",
+        'total_value': "القيمة الإجمالية",
+        'balance_updated': "محدث في الوقت الفعلي",
+        'no_balance': "❌ لم يتم العثور على رصيد في حساب Binance الخاص بك.",
+        'error_balance': "خطأ في جلب الرصيد. الرجاء المحاولة مرة أخرى لاحقاً.",
     }
 }
 
