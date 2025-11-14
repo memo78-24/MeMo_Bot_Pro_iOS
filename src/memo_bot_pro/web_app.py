@@ -76,6 +76,7 @@ def get_or_create_client():
             _last_error = None
         except Exception as e:
             _last_error = str(e)
+            logger.error(f"❌ Client initialization failed: {e}", exc_info=True)
             # Fallback to mock mode on error
             config = Config.from_env()
             _client = BinanceClient(mock=True)
@@ -85,7 +86,7 @@ def get_or_create_client():
             _database = None
             _trading_commands = None
     
-    return _client, _signal_gen, _monitor
+    return _client, _signal_gen, _database
 
 HTML_TEMPLATE = '''
 <!DOCTYPE html>
