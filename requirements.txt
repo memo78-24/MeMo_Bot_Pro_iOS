@@ -12,3 +12,4 @@ psutil
 reportlab
 psycopg2-binary
 flask-cors
+init-data-py

@@ -14,8 +14,10 @@ import asyncio
 import logging
 import threading
 import json
+from functools import wraps
 from telegram import Update
 from telegram.ext import Application
+from init_data_py import InitData
 
 app = Flask(__name__, template_folder='templates', static_folder='../../client/dist')
 
@@ -53,6 +55,54 @@ _bot_thread = None
 # Setup logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# Telegram Authentication Middleware
+def validate_telegram_user(f):
+    """
+    Decorator to validate Telegram Mini App requests using initData.
+    Extracts user_id from validated Telegram data and adds it to request context.
+    """
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        # Get initData from header or query parameter
+        init_data_raw = request.headers.get('X-Telegram-Init-Data') or request.args.get('initData')
+        
+        # In development/testing, allow bypass if no initData provided but user_id is present
+        is_dev = os.getenv('REPLIT_DEPLOYMENT') != '1'
+        if not init_data_raw and is_dev:
+            logger.warning("⚠️ DEV MODE: Skipping Telegram authentication (no initData)")
+            return f(*args, **kwargs)
+        
+        if not init_data_raw:
+            return jsonify({'error': 'Unauthorized - Missing Telegram authentication'}), 401
+        
+        try:
+            # Get bot token from environment
+            bot_token = os.getenv('TELEGRAM_BOT_TOKEN')
+            if not bot_token:
+                logger.error("TELEGRAM_BOT_TOKEN not set")
+                return jsonify({'error': 'Server configuration error'}), 500
+            
+            # Parse and validate initData
+            init_data = InitData.parse(init_data_raw)
+            is_valid = init_data.validate(bot_token=bot_token, lifetime=3600)
+            
+            if not is_valid:
+                logger.warning(f"Invalid Telegram initData")
+                return jsonify({'error': 'Unauthorized - Invalid Telegram authentication'}), 401
+            
+            # Add validated user_id to request context
+            request.telegram_user_id = init_data.user.id
+            request.telegram_user = init_data.user
+            
+            logger.info(f"✅ Authenticated Telegram user: {init_data.user.id}")
+            return f(*args, **kwargs)
+            
+        except Exception as e:
+            logger.error(f"Telegram auth error: {e}")
+            return jsonify({'error': f'Authentication failed: {str(e)}'}), 401
+    
+    return decorated_function
 
 def get_or_create_client():
     """Lazy initialization of Binance client with error handling
@@ -629,10 +679,12 @@ def api_scalping_signals():
         return jsonify({'error': str(e)}), 503
 
 @app.route('/api/balance')
+@validate_telegram_user
 def api_balance():
-    """API endpoint for user balance from Binance"""
+    """API endpoint for user balance from Binance (authenticated)"""
     try:
-        user_id = request.args.get('user_id')
+        # Get user_id from validated Telegram data, fallback to query param for dev mode
+        user_id = getattr(request, 'telegram_user_id', request.args.get('user_id'))
         if not user_id:
             return jsonify({'error': 'user_id required'}), 400
         
@@ -688,29 +740,90 @@ def api_balance():
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/trade', methods=['POST'])
+@validate_telegram_user
 def api_trade():
-    """API endpoint to execute a trade"""
+    """API endpoint to execute a trade (authenticated)"""
     try:
         data = request.get_json()
-        user_id = data.get('user_id')
+        
+        # Get user_id from validated Telegram data, fallback to request data for dev mode
+        user_id = getattr(request, 'telegram_user_id', data.get('user_id'))
         symbol = data.get('symbol')
         trade_type = data.get('type')  # 'buy' or 'sell'
         amount = data.get('amount')  # USDT amount
-        price = data.get('price')
         
+        # Validation
         if not all([user_id, symbol, trade_type, amount]):
-            return jsonify({'error': 'Missing required fields'}), 400
+            return jsonify({'error': 'Missing required fields: user_id, symbol, type, amount'}), 400
+        
+        # Validate symbol format
+        valid_symbols = ['BTC', 'ETH', 'BNB', 'XRP', 'SOL', 'ADA', 'DOGE', 'DOT', 'MATIC', 'SHIB']
+        if symbol.upper() not in valid_symbols:
+            return jsonify({'error': f'Invalid symbol. Must be one of: {", ".join(valid_symbols)}'}), 400
+        
+        # Validate trade type
+        if trade_type not in ['buy', 'sell']:
+            return jsonify({'error': 'Invalid type. Must be "buy" or "sell"'}), 400
+        
+        # Validate amount
+        try:
+            amount_float = float(amount)
+            if amount_float <= 0 or amount_float > 1000:
+                return jsonify({'error': 'Invalid amount. Must be between 0 and 1000 USDT'}), 400
+        except ValueError:
+            return jsonify({'error': 'Invalid amount format'}), 400
         
         client, _, _, database = get_or_create_client()
         
+        # Fetch current market price
+        try:
+            binance_symbol = f"{symbol.upper()}USDT"
+            ticker = client.client.get_ticker(symbol=binance_symbol)
+            current_price = float(ticker['lastPrice'])
+            
+            logger.info(f"Fetched current price for {binance_symbol}: {current_price}")
+        except Exception as e:
+            logger.error(f"Error fetching price for {binance_symbol}: {e}")
+            return jsonify({'error': f'Unable to fetch current price for {symbol}'}), 503
+        
         # Calculate quantity from USDT amount
-        quantity = float(amount) / float(price)
+        quantity = amount_float / current_price
         
         # Execute trade via Binance
         try:
-            binance_symbol = f"{symbol}USDT"
             side = 'BUY' if trade_type == 'buy' else 'SELL'
             
+            # In mock mode, simulate order
+            if hasattr(client, 'mock_mode') and client.mock_mode:
+                logger.info(f"MOCK TRADE: {side} {quantity} {binance_symbol} @ {current_price}")
+                order_id = f"MOCK_{int(time.time())}"
+                
+                # Record mock trade in database
+                if database:
+                    database.record_trade(
+                        user_id=int(user_id),
+                        symbol=symbol.upper(),
+                        type=trade_type,
+                        quantity=quantity,
+                        price=current_price,
+                        amount=amount_float,
+                        status='completed'
+                    )
+                
+                return jsonify({
+                    'success': True,
+                    'order_id': order_id,
+                    'symbol': symbol.upper(),
+                    'type': trade_type,
+                    'quantity': quantity,
+                    'price': current_price,
+                    'amount': amount_float,
+                    'status': 'completed',
+                    'mock': True,
+                    'timestamp': time.time()
+                })
+            
+            # Real Binance order
             order = client.client.order_market(
                 symbol=binance_symbol,
                 side=side,
@@ -721,35 +834,50 @@ def api_trade():
             if database:
                 database.record_trade(
                     user_id=int(user_id),
-                    symbol=symbol,
+                    symbol=symbol.upper(),
                     type=trade_type,
                     quantity=quantity,
-                    price=float(price),
-                    amount=float(amount),
+                    price=current_price,
+                    amount=amount_float,
                     status='completed'
                 )
             
             return jsonify({
                 'success': True,
                 'order_id': order.get('orderId'),
-                'symbol': symbol,
+                'symbol': symbol.upper(),
                 'type': trade_type,
                 'quantity': quantity,
-                'price': price,
+                'price': current_price,
+                'amount': amount_float,
                 'status': 'completed',
                 'timestamp': time.time()
             })
         except Exception as e:
             logger.error(f"Trade execution error: {e}")
+            # Record failed trade
+            if database:
+                database.record_trade(
+                    user_id=int(user_id),
+                    symbol=symbol.upper(),
+                    type=trade_type,
+                    quantity=quantity,
+                    price=current_price,
+                    amount=amount_float,
+                    status='failed'
+                )
             return jsonify({'error': f'Trade failed: {str(e)}'}), 500
     except Exception as e:
+        logger.error(f"Unexpected error in trade API: {e}")
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/trade-history')
+@validate_telegram_user
 def api_trade_history():
-    """API endpoint for user trade history"""
+    """API endpoint for user trade history (authenticated)"""
     try:
-        user_id = request.args.get('user_id')
+        # Get user_id from validated Telegram data, fallback to query param for dev mode
+        user_id = getattr(request, 'telegram_user_id', request.args.get('user_id'))
         if not user_id:
             return jsonify({'error': 'user_id required'}), 400
         
@@ -764,10 +892,12 @@ def api_trade_history():
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/profit')
+@validate_telegram_user
 def api_profit():
-    """API endpoint for profit tracking"""
+    """API endpoint for profit tracking (authenticated)"""
     try:
-        user_id = request.args.get('user_id')
+        # Get user_id from validated Telegram data, fallback to query param for dev mode
+        user_id = getattr(request, 'telegram_user_id', request.args.get('user_id'))
         if not user_id:
             return jsonify({'error': 'user_id required'}), 400
         
