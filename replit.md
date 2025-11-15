@@ -17,6 +17,13 @@ No specific user preferences recorded yet.
 
 ### UI/UX Decisions
 - **Telegram Bot**: Features interactive button menus, persistent main menu, and dual language support (English/Arabic) with Arabic-Indic numerals. Alerts include currency logos (₿ Ξ 🔶 ◎ ✕ ₳ Ð ● ⬡ 🐕) and clickable links to Binance markets.
+- **Telegram Mini App UI**: Opera GX gaming-inspired dark theme with:
+  - Deep black backgrounds (#0d0d10) for main surface, dark card backgrounds (#1a1a1e, #25252b)
+  - Hot pink accents (#FF0050) for primary actions, gradients, and highlights
+  - Brighter pink variant (#FF3377) for text elements ensuring WCAG AA accessibility
+  - Neon glow effects on buttons and active states for gaming aesthetic
+  - All contrast ratios meet or exceed 4.5:1 for accessibility compliance
+  - Consistent token-based design system via Tailwind CSS
 - **Web Dashboard**: A Flask-based web interface showing live market data and signals, designed for real-time updates every 30 seconds.
 - **Monitoring Dashboard**: Includes big alert banners, looping sound alerts, and an acknowledgment system for critical issues.
 
@@ -92,3 +99,4 @@ No specific user preferences recorded yet.
   - Dev mode bypass enabled when REPLIT_DEPLOYMENT != 1
   - Build script (build_miniapp.sh) for deployment preparation
   - Served at /miniapp endpoint with static file handling
+  - **Opera GX Dark Theme**: Complete UI overhaul to gaming aesthetic with deep black backgrounds, hot pink gradients, neon glow effects, and WCAG AA accessibility compliance (all contrast ratios ≥4.5:1)
