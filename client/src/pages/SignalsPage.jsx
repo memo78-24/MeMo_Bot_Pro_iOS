@@ -141,7 +141,7 @@ const SignalsPage = () => {
       {/* Info Banner */}
       <div className="mx-4 mt-4 bg-gradient-to-r from-gx-pink/10 to-gx-pink/20 border border-gx-pink/30 rounded-2xl p-4">
         <div className="flex items-start gap-3">
-          <Target className="text-gx-pink flex-shrink-0 mt-0.5" size={20} />
+          <Target className="text-gx-pink-bright flex-shrink-0 mt-0.5" size={20} />
           <div>
             <h3 className="font-semibold text-gx-text mb-1">Scalping Strategy</h3>
             <p className="text-sm text-gx-text-muted">
@@ -155,7 +155,7 @@ const SignalsPage = () => {
       <div className="px-4 mt-6 pb-4">
         {loading && signals.length === 0 ? (
           <div className="flex items-center justify-center py-12">
-            <RefreshCw className="animate-spin text-gx-pink" size={32} />
+            <RefreshCw className="animate-spin text-gx-pink-bright" size={32} />
           </div>
         ) : error ? (
           <div className="bg-red-500/10 border border-red-500/30 rounded-2xl p-6 text-center">

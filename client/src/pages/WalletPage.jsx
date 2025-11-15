@@ -98,7 +98,7 @@ const WalletPage = ({ onNavigate }) => {
         
         {marketLoading ? (
           <div className="flex items-center justify-center py-12">
-            <RefreshCw className="animate-spin text-gx-pink" size={32} />
+            <RefreshCw className="animate-spin text-gx-pink-bright" size={32} />
           </div>
         ) : (
           <div className="divide-y divide-white/5">

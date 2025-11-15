@@ -151,7 +151,7 @@ const HistoryPage = () => {
       <div className="px-4 pb-4">
         {loading ? (
           <div className="flex items-center justify-center py-12">
-            <RefreshCw className="animate-spin text-gx-pink" size={32} />
+            <RefreshCw className="animate-spin text-gx-pink-bright" size={32} />
           </div>
         ) : filteredTrades.length === 0 ? (
           <div className="bg-gx-card border border-white/10 rounded-2xl p-8 text-center">

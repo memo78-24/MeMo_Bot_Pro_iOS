@@ -54,7 +54,7 @@ const TradePage = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gx-dark">
-        <RefreshCw className="animate-spin text-gx-pink" size={32} />
+        <RefreshCw className="animate-spin text-gx-pink-bright" size={32} />
       </div>
     );
   }
@@ -209,7 +209,7 @@ const TradePage = () => {
               </div>
               <div className="flex justify-between pt-3 border-t border-white/10">
                 <span className="text-gx-text font-semibold">You Get</span>
-                <span className="font-bold text-gx-pink">{(parseFloat(amount) / price).toFixed(8)} {symbol}</span>
+                <span className="font-bold text-gx-pink-bright">{(parseFloat(amount) / price).toFixed(8)} {symbol}</span>
               </div>
             </div>
             <div className="flex gap-3">

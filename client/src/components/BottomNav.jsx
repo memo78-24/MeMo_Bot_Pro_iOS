@@ -20,7 +20,7 @@ const BottomNav = ({ active, onNavigate }) => {
               key={tab.id}
               onClick={() => onNavigate(tab.id)}
               className={`flex flex-col items-center justify-center py-2 px-4 min-w-[60px] transition-all ${
-                isActive ? 'text-gx-pink' : 'text-gx-text-muted'
+                isActive ? 'text-gx-pink-bright' : 'text-gx-text-muted'
               } relative`}
             >
               {isActive && (
