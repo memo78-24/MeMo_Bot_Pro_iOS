@@ -775,6 +775,24 @@ def api_trade():
         
         client, _, _, database = get_or_create_client()
         
+        # Ensure user exists in database (required for foreign key constraint)
+        if database:
+            user = database.get_user(int(user_id))
+            if not user:
+                # Create user with default settings
+                username = getattr(request, 'telegram_user', None)
+                username_str = username.username if username and hasattr(username, 'username') else f"user_{user_id}"
+                database.save_user(
+                    user_id=int(user_id),
+                    username=username_str,
+                    settings={
+                        'language': 'en',
+                        'auto_signals': False,
+                        'auto_trading': False,
+                        'timezone': 'UTC'
+                    }
+                )
+        
         # Fetch current market price
         try:
             binance_symbol = f"{symbol.upper()}USDT"
@@ -800,14 +818,21 @@ def api_trade():
                 
                 # Record mock trade in database
                 if database:
-                    database.record_trade(
+                    aed_value = amount_float * 3.67
+                    database.save_trade(
                         user_id=int(user_id),
-                        symbol=symbol.upper(),
-                        type=trade_type,
-                        quantity=quantity,
-                        price=current_price,
-                        amount=amount_float,
-                        status='completed'
+                        trade_data={
+                            'symbol': symbol.upper(),
+                            'side': side,
+                            'quantity': quantity,
+                            'price': current_price,
+                            'usdt_value': amount_float,
+                            'aed_value': aed_value,
+                            'order_id': order_id,
+                            'status': 'FILLED',
+                            'profit_loss': 0,
+                            'is_auto_trade': False
+                        }
                     )
                 
                 return jsonify({
@@ -832,14 +857,21 @@ def api_trade():
             
             # Record trade in database
             if database:
-                database.record_trade(
+                aed_value = amount_float * 3.67
+                database.save_trade(
                     user_id=int(user_id),
-                    symbol=symbol.upper(),
-                    type=trade_type,
-                    quantity=quantity,
-                    price=current_price,
-                    amount=amount_float,
-                    status='completed'
+                    trade_data={
+                        'symbol': symbol.upper(),
+                        'side': side,
+                        'quantity': quantity,
+                        'price': current_price,
+                        'usdt_value': amount_float,
+                        'aed_value': aed_value,
+                        'order_id': order.get('orderId'),
+                        'status': 'FILLED',
+                        'profit_loss': 0,
+                        'is_auto_trade': False
+                    }
                 )
             
             return jsonify({
@@ -857,14 +889,21 @@ def api_trade():
             logger.error(f"Trade execution error: {e}")
             # Record failed trade
             if database:
-                database.record_trade(
+                aed_value = amount_float * 3.67
+                database.save_trade(
                     user_id=int(user_id),
-                    symbol=symbol.upper(),
-                    type=trade_type,
-                    quantity=quantity,
-                    price=current_price,
-                    amount=amount_float,
-                    status='failed'
+                    trade_data={
+                        'symbol': symbol.upper(),
+                        'side': side,
+                        'quantity': quantity,
+                        'price': current_price,
+                        'usdt_value': amount_float,
+                        'aed_value': aed_value,
+                        'order_id': None,
+                        'status': 'FAILED',
+                        'profit_loss': 0,
+                        'is_auto_trade': False
+                    }
                 )
             return jsonify({'error': f'Trade failed: {str(e)}'}), 500
     except Exception as e:

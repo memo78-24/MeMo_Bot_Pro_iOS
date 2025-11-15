@@ -34,6 +34,18 @@ No specific user preferences recorded yet.
 
 ### Features
 - **Interactive Telegram Bot**: FIRST-TO-MARKET Arabic crypto trading assistant with dual language support, interactive menus, real-time signals, and user settings management. Includes instant price alerts and 2-hour summaries.
+- **Telegram Mini App**: Modern React-based web application embedded inside Telegram with:
+  - Wallet-style UI matching Telegram Wallet design (React + Vite + Tailwind CSS)
+  - Real-time balance display with USDT/AED conversion
+  - Trading interface with buy/sell confirmation and haptic feedback
+  - Scalping signals page with entry/exit/stop-loss/take-profit data
+  - Trade history with profit/loss tracking
+  - Telegram SDK integration (themes, navigation, user authentication)
+  - Secured REST API with Telegram initData validation (init-data-py)
+  - Auto-price fetching from Binance for trades
+  - Comprehensive input validation (symbols, amounts, trade types)
+  - CORS restricted to Telegram domains only
+  - Production-ready authentication (disabled in dev mode via REPLIT_DEPLOYMENT check)
 - **Live Trading System**: Real Binance integration with /balance showing wallet holdings in USDT/AED, /trade for manual buy/sell execution with confirmation, /history for trade tracking, and /auto command (feature coming soon).
 - **Trading Profit Calculator**: Real-time profit/loss tracking for 1000 AED investment across 10 currencies. Shows current value, weekly projections, top performers, and trading activity metrics. Accessible via /profit command or main menu.
 - **Production Monitoring System**: 24/7 deployment health tracking with:
@@ -57,10 +69,12 @@ No specific user preferences recorded yet.
 - **python-telegram-bot**: Framework for building the Telegram bot.
 - **python-dotenv**: Manages environment variables.
 - **flask**: Web framework for the dashboard.
+- **flask-cors**: CORS support for secure API access.
 - **gunicorn**: Production WSGI server for deployment.
 - **openpyxl**: Used for Excel-based user settings storage fallback.
 - **nest-asyncio**: Enables nested event loops for concurrent operations.
 - **APScheduler**: Used for scheduling background tasks like auto-notifications.
+- **init-data-py**: Telegram Mini App authentication library for validating initData.
 
 ## Recent Changes (November 2024)
 - **PostgreSQL Migration**: Migrated from Excel-based storage to PostgreSQL with graceful fallback. Includes adapter pattern in EnhancedTelegramBot for seamless switching.
@@ -68,3 +82,13 @@ No specific user preferences recorded yet.
 - **Scalping Signals**: Implemented advanced signal generator with entry/exit prices, stop-loss (0.5%), and take-profit (1.5%) calculations.
 - **Production Hardening**: Database initialization with graceful fallback, error handling in all API endpoints, conditional trading command registration.
 - **Auto-Trading Placeholder**: Auto-trading scheduler infrastructure in place, feature disabled with "coming soon" message until full implementation.
+- **Telegram Mini App Implementation (November 15, 2025)**:
+  - Built complete React + Vite + Tailwind CSS frontend with wallet-style UI
+  - Created 6 secured REST API endpoints with Telegram initData authentication
+  - Implemented auto-price fetching for trades (no manual price input needed)
+  - Added comprehensive input validation (symbols, amounts, types)
+  - Auto-user creation for foreign key constraint compliance
+  - CORS locked to Telegram domains only
+  - Dev mode bypass enabled when REPLIT_DEPLOYMENT != 1
+  - Build script (build_miniapp.sh) for deployment preparation
+  - Served at /miniapp endpoint with static file handling
