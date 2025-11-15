@@ -20,9 +20,9 @@ function App() {
       app.miniApp.ready();
     }
     
-    // Set header color
+    // Set header color to match GX dark theme
     if (app && app.miniApp && app.miniApp.setHeaderColor) {
-      app.miniApp.setHeaderColor('#ffffff');
+      app.miniApp.setHeaderColor('#0d0d10');
     }
   }, []);
 
@@ -51,7 +51,7 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-telegram-bg">
+    <div className="min-h-screen bg-gx-dark">
       {renderPage()}
       <BottomNav active={currentPage} onNavigate={setCurrentPage} />
     </div>

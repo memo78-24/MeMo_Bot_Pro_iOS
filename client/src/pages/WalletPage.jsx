@@ -41,21 +41,21 @@ const WalletPage = ({ onNavigate }) => {
   const cryptoHoldings = marketData?.prices || [];
 
   return (
-    <div className="flex flex-col min-h-screen bg-telegram-bg pb-20">
+    <div className="flex flex-col min-h-screen bg-gx-dark pb-20">
       {/* Header */}
-      <div className="bg-white px-4 pt-6 pb-4 safe-area-top">
+      <div className="bg-gx-card px-4 pt-6 pb-4 safe-area-top">
         <div className="flex items-center justify-between mb-2">
-          <h1 className="text-2xl font-bold text-gray-900">Wallet</h1>
-          <button className="p-2 hover:bg-gray-100 rounded-full transition-colors">
-            <RefreshCw size={20} className="text-gray-600" />
+          <h1 className="text-2xl font-bold text-gx-text">WALLET</h1>
+          <button className="p-2 hover:bg-gx-card-light rounded-full transition-colors">
+            <RefreshCw size={20} className="text-gx-text-muted" />
           </button>
         </div>
-        <p className="text-sm text-gray-500">MeMo Bot Pro</p>
+        <p className="text-sm text-gx-text-muted">MeMo Bot Pro</p>
       </div>
 
       {/* Balance Card */}
-      <div className="bg-gradient-to-br from-telegram-blue to-blue-600 mx-4 mt-4 rounded-3xl p-6 text-white shadow-lg">
-        <div className="text-sm opacity-90 mb-2">Total Balance</div>
+      <div className="bg-gradient-to-br from-gx-pink to-gx-pink-dark mx-4 mt-4 rounded-3xl p-6 text-white shadow-[0_0_30px_rgba(255,0,80,0.25)]">
+        <div className="text-sm opacity-90 mb-2">TOTAL BALANCE</div>
         <div className="text-4xl font-bold mb-1">
           {loading ? '...' : `$${totalUSDT.toFixed(2)}`}
         </div>
@@ -91,17 +91,17 @@ const WalletPage = ({ onNavigate }) => {
       </div>
 
       {/* Assets List */}
-      <div className="mt-6 bg-white rounded-t-3xl flex-1">
-        <div className="px-4 py-4 border-b border-gray-100">
-          <h2 className="text-lg font-bold text-gray-900">Assets</h2>
+      <div className="mt-6 bg-gx-card rounded-t-3xl flex-1">
+        <div className="px-4 py-4 border-b border-white/10">
+          <h2 className="text-lg font-bold text-gx-text">ASSETS</h2>
         </div>
         
         {marketLoading ? (
           <div className="flex items-center justify-center py-12">
-            <RefreshCw className="animate-spin text-telegram-blue" size={32} />
+            <RefreshCw className="animate-spin text-gx-pink" size={32} />
           </div>
         ) : (
-          <div className="divide-y divide-gray-100">
+          <div className="divide-y divide-white/5">
             {cryptoHoldings.map((crypto) => {
               const symbol = crypto.symbol?.replace('USDT', '') || 'BTC';
               const userBalance = balance?.[symbol] || 0;
