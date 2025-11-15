@@ -1,10 +1,10 @@
-modules = ["python-3.11"]
+modules = ["python-3.11", "nodejs-20"]
 [agent]
 expertMode = true
 
 [nix]
 channel = "stable-25_05"
-packages = ["freetype", "glibcLocales", "deploy-rs"]
+packages = ["deploy-rs", "freetype", "glibcLocales"]
 
 [workflows]
 runButton = "Project"

@@ -3,6 +3,7 @@ requests==2.32.3
 python-telegram-bot>=20.0
 python-dotenv>=1.0.0
 flask>=3.0.0
+flask-cors>=4.0.0
 gunicorn>=23.0.0
 openpyxl>=3.1.0
 nest-asyncio
@@ -10,3 +11,4 @@ APScheduler
 psutil
 reportlab
 psycopg2-binary
+flask-cors

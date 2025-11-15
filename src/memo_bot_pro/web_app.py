@@ -1,4 +1,5 @@
 from flask import Flask, render_template_string, jsonify, request, send_from_directory
+from flask_cors import CORS
 from .config import Config
 from .binance_client import BinanceClient
 from .signal_generator import SignalGenerator
@@ -16,7 +17,24 @@ import json
 from telegram import Update
 from telegram.ext import Application
 
-app = Flask(__name__, template_folder='templates')
+app = Flask(__name__, template_folder='templates', static_folder='../../client/dist')
+
+# Configure CORS for Telegram Mini App (locked down to specific Telegram domains)
+# Note: Flask-CORS treats patterns literally, so we list explicit subdomains
+CORS(app, resources={
+    r"/api/*": {
+        "origins": [
+            "https://web.telegram.org",
+            "https://telegram.org",
+            "https://t.me",
+            "https://js.telegram.org",
+            "https://oauth.telegram.org"
+        ],
+        "methods": ["GET", "POST", "OPTIONS"],
+        "allow_headers": ["Content-Type", "Authorization", "X-Telegram-Init-Data"],
+        "supports_credentials": False
+    }
+})
 
 # Global client instances (lazy initialization)
 _client = None
@@ -543,6 +561,26 @@ def api_production_status():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+# Telegram Mini App routes
+@app.route('/miniapp')
+@app.route('/miniapp/')
+def serve_miniapp():
+    """Serve the Telegram Mini App"""
+    try:
+        return send_from_directory(app.static_folder, 'index.html')
+    except Exception as e:
+        logger.error(f"Error serving mini app: {e}")
+        return jsonify({'error': 'Mini app not available. Run: cd client && npm run build'}), 404
+
+@app.route('/miniapp/<path:path>')
+def serve_miniapp_assets(path):
+    """Serve Mini App static assets"""
+    try:
+        return send_from_directory(app.static_folder, path)
+    except Exception as e:
+        logger.error(f"Error serving mini app asset {path}: {e}")
+        return jsonify({'error': 'Asset not found'}), 404
+
 @app.route('/api/prices')
 def api_prices():
     """API endpoint for prices with error handling"""
@@ -560,6 +598,209 @@ def api_signals():
         return jsonify({'signals': signal_gen.generate_signals()})
     except Exception as e:
         return jsonify({'error': str(e)}), 503
+
+# Mini App API Endpoints
+@app.route('/api/market-data')
+def api_market_data():
+    """API endpoint for market data (Mini App frontend expects this format)"""
+    try:
+        client, _, _, _ = get_or_create_client()
+        prices = client.get_all_prices()
+        return jsonify({'prices': prices, 'timestamp': time.time()})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 503
+
+@app.route('/api/scalping-signals')
+def api_scalping_signals():
+    """API endpoint for scalping signals with entry/exit/stop-loss/take-profit"""
+    try:
+        client, _, _, _ = get_or_create_client()
+        
+        # Get scalping signals generator
+        global _scalping_signals
+        if _scalping_signals is None:
+            from .scalping_signals import ScalpingSignalGenerator
+            _scalping_signals = ScalpingSignalGenerator(client)
+        
+        signals = _scalping_signals.generate_all_signals()
+        return jsonify({'signals': signals, 'timestamp': time.time()})
+    except Exception as e:
+        logger.error(f"Error generating scalping signals: {e}")
+        return jsonify({'error': str(e)}), 503
+
+@app.route('/api/balance')
+def api_balance():
+    """API endpoint for user balance from Binance"""
+    try:
+        user_id = request.args.get('user_id')
+        if not user_id:
+            return jsonify({'error': 'user_id required'}), 400
+        
+        client, _, _, database = get_or_create_client()
+        
+        # Get Binance balances
+        try:
+            account_info = client.client.get_account()
+            balances = {}
+            total_usdt = 0
+            
+            for balance in account_info.get('balances', []):
+                asset = balance['asset']
+                free = float(balance['free'])
+                locked = float(balance['locked'])
+                total = free + locked
+                
+                if total > 0:
+                    balances[asset] = total
+                    
+                    # Calculate USDT value
+                    if asset == 'USDT':
+                        total_usdt += total
+                    else:
+                        try:
+                            symbol = f"{asset}USDT"
+                            ticker = client.client.get_ticker(symbol=symbol)
+                            price = float(ticker['lastPrice'])
+                            total_usdt += total * price
+                        except:
+                            pass
+            
+            # Convert to AED (1 USDT ≈ 3.67 AED)
+            total_aed = total_usdt * 3.67
+            
+            return jsonify({
+                'balances': balances,
+                'total_usdt': total_usdt,
+                'total_aed': total_aed,
+                'timestamp': time.time()
+            })
+        except Exception as e:
+            # Return mock data if Binance API fails
+            logger.warning(f"Binance API error, returning mock data: {e}")
+            return jsonify({
+                'balances': {},
+                'total_usdt': 0,
+                'total_aed': 0,
+                'timestamp': time.time(),
+                'mock': True
+            })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/trade', methods=['POST'])
+def api_trade():
+    """API endpoint to execute a trade"""
+    try:
+        data = request.get_json()
+        user_id = data.get('user_id')
+        symbol = data.get('symbol')
+        trade_type = data.get('type')  # 'buy' or 'sell'
+        amount = data.get('amount')  # USDT amount
+        price = data.get('price')
+        
+        if not all([user_id, symbol, trade_type, amount]):
+            return jsonify({'error': 'Missing required fields'}), 400
+        
+        client, _, _, database = get_or_create_client()
+        
+        # Calculate quantity from USDT amount
+        quantity = float(amount) / float(price)
+        
+        # Execute trade via Binance
+        try:
+            binance_symbol = f"{symbol}USDT"
+            side = 'BUY' if trade_type == 'buy' else 'SELL'
+            
+            order = client.client.order_market(
+                symbol=binance_symbol,
+                side=side,
+                quantity=quantity
+            )
+            
+            # Record trade in database
+            if database:
+                database.record_trade(
+                    user_id=int(user_id),
+                    symbol=symbol,
+                    type=trade_type,
+                    quantity=quantity,
+                    price=float(price),
+                    amount=float(amount),
+                    status='completed'
+                )
+            
+            return jsonify({
+                'success': True,
+                'order_id': order.get('orderId'),
+                'symbol': symbol,
+                'type': trade_type,
+                'quantity': quantity,
+                'price': price,
+                'status': 'completed',
+                'timestamp': time.time()
+            })
+        except Exception as e:
+            logger.error(f"Trade execution error: {e}")
+            return jsonify({'error': f'Trade failed: {str(e)}'}), 500
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/trade-history')
+def api_trade_history():
+    """API endpoint for user trade history"""
+    try:
+        user_id = request.args.get('user_id')
+        if not user_id:
+            return jsonify({'error': 'user_id required'}), 400
+        
+        _, _, _, database = get_or_create_client()
+        
+        if database:
+            trades = database.get_trade_history(int(user_id))
+            return jsonify({'trades': trades, 'timestamp': time.time()})
+        else:
+            return jsonify({'trades': [], 'timestamp': time.time()})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/profit')
+def api_profit():
+    """API endpoint for profit tracking"""
+    try:
+        user_id = request.args.get('user_id')
+        if not user_id:
+            return jsonify({'error': 'user_id required'}), 400
+        
+        _, _, _, database = get_or_create_client()
+        
+        if database:
+            trades = database.get_trade_history(int(user_id))
+            
+            # Calculate total profit/loss
+            total_profit = sum(trade.get('profit', 0) for trade in trades)
+            winning_trades = len([t for t in trades if t.get('profit', 0) > 0])
+            total_trades = len(trades)
+            win_rate = (winning_trades / total_trades * 100) if total_trades > 0 else 0
+            
+            return jsonify({
+                'total_profit': total_profit,
+                'total_trades': total_trades,
+                'winning_trades': winning_trades,
+                'win_rate': win_rate,
+                'trades': trades,
+                'timestamp': time.time()
+            })
+        else:
+            return jsonify({
+                'total_profit': 0,
+                'total_trades': 0,
+                'winning_trades': 0,
+                'win_rate': 0,
+                'trades': [],
+                'timestamp': time.time()
+            })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 def _check_admin_access():
     """Simple admin check - requires admin token in header"""
