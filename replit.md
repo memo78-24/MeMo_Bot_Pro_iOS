@@ -86,7 +86,7 @@ No specific user preferences recorded yet.
 ## Recent Changes (November 2024)
 - **PostgreSQL Migration**: Migrated from Excel-based storage to PostgreSQL with graceful fallback. Includes adapter pattern in EnhancedTelegramBot for seamless switching.
 - **Trading System Integration**: Added /balance, /trade, /history commands with real Binance API integration. Trade history and profit/loss tracking stored in database.
-- **Scalping Signals**: Implemented advanced signal generator with entry/exit prices, stop-loss (0.5%), and take-profit (1.5%) calculations.
+- **Scalping Signals**: Implemented advanced signal generator with entry/exit prices, stop-loss ($0.5), and take-profit ($1.5) calculations.
 - **Production Hardening**: Database initialization with graceful fallback, error handling in all API endpoints, conditional trading command registration.
 - **Auto-Trading Placeholder**: Auto-trading scheduler infrastructure in place, feature disabled with "coming soon" message until full implementation.
 - **Telegram Mini App Implementation (November 15, 2025)**:

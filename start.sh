@@ -1,4 +1,4 @@
-#!/bin/bash
+ #!/bin/bash
 
 # MeMo Bot Pro - Dual Service Startup Script
 # Runs both web server and Telegram bot simultaneously
